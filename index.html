@@ -1,0 +1,524 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Zoo-Net Tools</title>
+    
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js" defer></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js" defer></script>
+    
+    <script>
+        const savedTheme = localStorage.getItem('theme') || (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+        document.documentElement.setAttribute('data-theme', savedTheme);
+    </script>
+
+    <style>
+        :root {
+            /* 🌞 明亮模式变量 */
+            --bg-page: #e2e2e7;
+            --bg-card: rgba(255, 255, 255, 0.85);
+            --bg-input: rgba(255, 255, 255, 0.5);
+            --bg-tab: rgba(118, 118, 128, 0.12);
+            --text-main: #1d1d1f;
+            --text-sub: #6e6e73;
+            --border-color: rgba(0, 0, 0, 0.1);
+            --apple-blue: #007aff;
+            --apple-blue-gradient: linear-gradient(135deg, #007aff 0%, #5856d6 100%);
+            --apple-green: #34c759;
+            --radius-card: 22px;
+            --radius-btn: 10px;
+            --shadow-card: 0 20px 40px rgba(0, 0, 0, 0.1), 0 0 1px rgba(0, 0, 0, 0.2);
+            --shadow-focus: 0 0 0 4px rgba(0, 122, 255, 0.4);
+            
+            --h2-grad-start: #1d1d1f;
+            --h2-grad-end: #434343;
+            --tips-text: #86868b;
+            --inline-config-bg: rgba(0, 0, 0, 0.03);
+            
+            --tab-active-text: #ffffff; 
+
+            /* 二维码中心标识变量 */
+            --qr-info-bg: rgba(255, 255, 255, 0.95);
+            --qr-info-text: #000000;
+            --qr-info-border: #ffffff;
+
+            --font-main: "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "WenQuanYi Micro Hei", -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            --font-mono: "SF Mono", "Monaco", "Menlo", "Consolas", "Liberation Mono", "Courier New", monospace;
+        }
+
+        /* 🌙 暗黑模式变量 */
+        [data-theme="dark"] {
+            --bg-page: #1c1c1e;
+            --bg-card: rgba(28, 28, 30, 0.75);
+            --bg-input: rgba(44, 44, 46, 0.8);
+            --bg-tab: rgba(118, 118, 128, 0.24);
+            --text-main: #f5f5f7;
+            --text-sub: #ebebf5;
+            --border-color: rgba(255, 255, 255, 0.15);
+            --shadow-card: 0 20px 40px rgba(0, 0, 0, 0.5), 0 0 1px rgba(255, 255, 255, 0.2);
+            
+            --h2-grad-start: #f5f5f7;
+            --h2-grad-end: #86868b;
+            --tips-text: #a1a1a6;
+            --inline-config-bg: rgba(255, 255, 255, 0.05);
+
+            --tab-active-text: #1d1d1f; 
+
+            --qr-info-bg: #000000;
+            --qr-info-text: #ffffff;
+            --qr-info-border: #000000;
+        }
+
+        body {
+            font-family: var(--font-main);
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+            text-rendering: optimizeLegibility;
+            background: linear-gradient(120deg, var(--bg-page) 0%, var(--bg-page) 100%);
+            display: flex; justify-content: center; align-items: center;
+            min-height: 100vh; margin: 0; padding: 20px; box-sizing: border-box;
+            transition: background 0.4s ease;
+        }
+
+        .theme-toggle-btn {
+            position: fixed; top: 20px; right: 20px; width: 44px; height: 44px;
+            border-radius: 50%; border: 1px solid var(--border-color);
+            background: var(--bg-card); backdrop-filter: blur(10px);
+            color: var(--text-main); font-size: 20px; cursor: pointer;
+            z-index: 1000; display: flex; justify-content: center; align-items: center;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        .theme-toggle-btn:hover { transform: scale(1.1); }
+        .theme-toggle-btn:active { transform: scale(0.9); }
+
+        @keyframes windowShow {
+            from { opacity: 0; transform: scale(0.94) translateY(20px); }
+            to { opacity: 1; transform: scale(1) translateY(0); }
+        }
+
+        .container {
+            background-color: var(--bg-card); backdrop-filter: blur(20px);
+            padding: 40px; border-radius: var(--radius-card); 
+            box-shadow: var(--shadow-card); text-align: center; width: 100%; 
+            max-width: 600px; box-sizing: border-box; border: 1px solid var(--border-color);
+            animation: windowShow 0.6s cubic-bezier(0.23, 1, 0.32, 1);
+            transform: translateZ(0); transition: background-color 0.4s ease, border-color 0.4s ease;
+        }
+
+        .brand-logo { width: 88px; height: 88px; object-fit: cover; border-radius: 20px; margin: 0 auto 20px auto; display: block; box-shadow: 0 8px 16px rgba(0, 0, 0, 0.1); transition: all 0.4s ease; }
+        .brand-logo:hover { transform: scale(1.1) rotate(3deg); }
+
+        h2 { margin: 0 0 28px 0; font-size: 26px; font-weight: 700; background: linear-gradient(135deg, var(--h2-grad-start) 0%, var(--h2-grad-end) 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+
+        .tab-container { display: flex; background-color: var(--bg-tab); border-radius: 11.6px; padding: 3px; margin-bottom: 28px; }
+        .tab-btn { flex: 1; padding: 8px 0; border: none; background: transparent; border-radius: 9px; font-size: 14px; font-weight: 600; color: var(--text-main); cursor: pointer; transition: all 0.2s ease; }
+        .tab-btn.active { background-color: var(--apple-blue); color: var(--tab-active-text); box-shadow: 0 3px 8px rgba(0, 122, 255, 0.3); }
+
+        textarea, input[type="text"], select { width: 100%; box-sizing: border-box; padding: 14px 16px; margin-bottom: 16px; border: 1px solid var(--border-color); border-radius: var(--radius-btn); font-size: 14px; font-family: var(--font-mono); outline: none; background-color: var(--bg-input); transition: all 0.25s ease; color: var(--text-main); }
+        
+        /* 特别优化：调整自定义输入框字体大小以确保完整显示提示文字 */
+        #custom-backend, #custom-shortener, #custom-config { font-size: 11.6px; }
+
+        textarea:focus, input[type="text"]:focus, select:focus { border-color: var(--apple-blue); box-shadow: var(--shadow-focus); }
+
+        .grid-row { display: flex; gap: 14px; text-align: left; }
+        .grid-col { flex: 1; }
+
+        .advanced-toggle { text-align: center; font-size: 13px; color: var(--apple-blue); cursor: pointer; padding: 11.6px; margin-bottom: 16px; border-radius: 10px; background: rgba(0, 122, 255, 0.08); font-weight: 600; user-select: none; }
+        .advanced-content { display: none; animation: fadeIn 0.3s ease-out forwards; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } }
+
+        .btn { border: none; border-radius: var(--radius-btn); font-family: var(--font-main); font-weight: 600; cursor: pointer; transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); transform: translateZ(0); }
+        .primary-btn { background: var(--apple-blue-gradient); color: white; padding: 14px 44px; font-size: 16px; min-width: 180px; display: inline-block; box-shadow: 0 4px 11.6px rgba(0, 122, 255, 0.3); }
+        .primary-btn:hover, #copy-poster-btn:hover { transform: translateY(-2px); filter: brightness(1.1); box-shadow: 0 8px 20px rgba(0, 122, 255, 0.4); }
+
+        #sub-result { margin-top: 10px; padding: 18px 22px; background: rgba(52, 199, 89, 0.08); border: 1px solid rgba(52, 199, 89, 0.2); border-radius: var(--radius-btn); display: none; text-align: left; }
+
+        .success-flash-blink { animation: flashPulse 0.5s ease-out; }
+        @keyframes flashPulse { 0% { filter: brightness(1); } 50% { filter: brightness(0.85); opacity: 0.8; } 100% { filter: brightness(1); opacity: 1; } }
+
+        .flash-update { animation: containerPop 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
+        @keyframes containerPop { 0% { transform: scale(0.97); } 50% { transform: scale(1.02); } 100% { transform: scale(1); } }
+
+        .text-pop-active { display: inline-block; animation: textPop 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
+        @keyframes textPop { 0% { transform: scale(0.85); opacity: 0.5; } 50% { transform: scale(1.05); opacity: 1; } 100% { transform: scale(1); opacity: 1; } }
+
+        .toast { position: fixed; top: 30px; left: 50%; transform: translateX(-50%) translateY(-20px); background-color: rgba(0, 0, 0, 0.85); color: white; padding: 11.6px 24px; border-radius: 14px; font-size: 14px; font-weight: 600; z-index: 10000; opacity: 0; visibility: hidden; transition: all 0.4s ease; backdrop-filter: blur(15px); }
+        .toast.show { opacity: 1; visibility: visible; transform: translateX(-50%) translateY(0); }
+
+        .copy-btn { background-color: var(--apple-blue); color: #fff; padding: 11.6px 30px; border-radius: 8px; margin: 15px auto 0; display: block; }
+        
+        .hidden { display: none !important; }
+        .label-text { display: block; font-size: 13px; color: var(--text-sub); margin-bottom: 6px; font-weight: 600; text-align: left; padding-left: 2px; }
+
+        #qr-poster { background: rgba(52, 199, 89, 0.08); border: 1px solid rgba(52, 199, 89, 0.2); padding: 25px 25px 11.6px 25px; border-radius: var(--radius-card); display: none; margin: 10px auto 0 auto; width: fit-content; position: relative; transform: translateZ(0); }
+        
+        .qr-wrapper { position: relative; display: inline-flex; justify-content: center; align-items: center; }
+        #qrcode { display: flex; justify-content: center; align-items: center; padding: 10px; background: white; margin-bottom: 5px; border-radius: 16px; box-shadow: 0 4px 11.6px rgba(0,0,0,0.05); }
+        #qrcode img { width: 300px !important; height: 300px !important; image-rendering: pixelated; }
+
+        #embedded-info { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); background-color: var(--qr-info-bg); color: var(--qr-info-text); font-size: 11.6px; font-weight: 800; padding: 4px 8px; border-radius: 6px; box-shadow: 0 0 0 2px var(--qr-info-border); z-index: 10; transition: all 0.4s ease; max-width: 100px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+        .tips-text { width: 320px; box-sizing: border-box; margin: 6px auto 0 auto; font-size: 13px; color: var(--tips-text); line-height: 1.6; background: var(--bg-input); border: 1px solid var(--border-color); padding: 11.6px; border-radius: 16px; transition: all 0.4s ease; }
+        .footer-brand { text-align: center; font-size: 11.6px; color: #d2d2d7; margin-top: 11.6px; font-weight: 800; letter-spacing: 0.12em; text-transform: uppercase; }
+
+        #copy-poster-btn { background: var(--apple-blue-gradient); color: white; padding: 14px 44px; font-size: 16px; margin-top: 20px; }
+        #qr-error { text-align: center; margin: 10px 0; color: #ff3b30; font-weight: 700; font-size: 15px; }
+        .promo-text { text-align: center; margin-bottom: 15px; font-weight: 700; color: var(--text-main); line-height: 1.6; }
+
+        .config-inline-panel { background: var(--inline-config-bg); border-radius: 11.6px; padding: 11.6px; margin-bottom: 16px; display: none; text-align: left; }
+        .config-option-row { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; cursor: pointer; font-size: 13px; color: var(--text-main); }
+        .config-option-row input { width: 14px; height: 14px; accent-color: var(--apple-blue); margin: 0; }
+    </style>
+</head>
+<body>
+
+    <button id="theme-toggle" class="theme-toggle-btn" onclick="toggleTheme()" title="切换主题">🌙</button>
+    <div id="toast" class="toast"></div>
+
+    <div class="container">
+        <img src="Zoo_Logo.jpg" alt="Logo" class="brand-logo">
+        <h2>Zoo-Net Tools</h2>
+
+        <div class="tab-container">
+            <button class="tab-btn active" id="tab-qr" onclick="switchTab('qr')">二维码生成</button>
+            <button class="tab-btn" id="tab-sub" onclick="switchTab('sub')">订阅转换</button>
+        </div>
+
+        <div id="section-qr">
+            <label class="label-text" for="text-input">节点链接</label>
+            <textarea id="text-input" placeholder="请输入节点链接，支持多链接合并生成..." style="min-height: 140px;"></textarea>
+            
+            <div id="qr-error" class="hidden">🔞哒咩!你太长了!我受不了!<br>变短点再来!要不你去隔壁试试?<br>（文本过长或包含非法字符，核对精简后重试，批量内容请使用订阅转换）</div>
+
+            <div id="qr-poster">
+                <div class="qr-wrapper">
+                    <div id="qrcode"></div>
+                    <div id="embedded-info" class="hidden"></div>
+                </div>
+                <div class="promo-text" style="margin-top: -5px; margin-bottom: 0;">👇👇👇<br>🌎ZooDirector_<br>👍专注跨境出海网络</div>
+                <div id="node-tips" class="tips-text hidden"></div>
+                <div class="footer-brand">BY: ZOONET</div>
+            </div>
+            <button id="copy-poster-btn" class="btn hidden" onclick="copyPoster()">📸 复制图片到剪贴板</button>
+        </div>
+
+        <div id="section-sub" class="hidden">
+            <label class="label-text" for="sub-links">订阅链接</label>
+            <textarea id="sub-links" placeholder="请输入订阅链接，支持多行输入..." style="min-height: 100px;"></textarea>
+            
+            <div class="grid-row">
+                <div class="grid-col">
+                    <label class="label-text" for="sub-target">目标客户端</label>
+                    <select id="sub-target">
+                        <option value="clash">Clash (Mihomo/Meta)</option>
+                        <option value="singbox">Sing-box</option>
+                        <option value="shadowrocket">Shadowrocket</option>
+                        <option value="v2ray">V2ray/Base64</option>
+                        <option value="stash">Stash</option>
+                        <option value="surge&ver=4">Surge 4/5</option>
+                        <option value="loon">Loon</option>
+                        <option value="surfboard">Surfboard</option>
+                        <option value="quanx">Quantumult X</option>
+						<option value="mixed">通用订阅 (自动识别)</option>
+                    </select>
+                </div>
+                <div class="grid-col">
+                    <label class="label-text" for="sub-filename">订阅名称</label>
+                    <input type="text" id="sub-filename" placeholder="自定义/可留空">
+                </div>
+            </div>
+
+            <div class="advanced-toggle" onclick="toggleAdvanced()">⚙️ 高级设置 (新手保持默认) 🔽</div>
+            <div id="advanced-settings" class="advanced-content">
+                <div class="grid-row">
+                    <div class="grid-col">
+                        <label class="label-text" for="sub-backend">后端地址</label>
+                        <select id="sub-backend">
+                            <option value="https://api.v1.mk/sub?">api.v1.mk (高效/稳定)</option>
+                            <option value="https://api.wcc.best/sub?">api.wcc.best (稳定后端)</option>
+                            <option value="https://sub.id9.cc/sub?">sub.id9.cc (品云提供)</option>
+                            <option value="https://api.nexconvert.com/sub?">api.nexconvert.com (奶昔提供)</option>
+                            <option value="https://api.tsutsu.one/sub?">api.tsutsu.one (新协议最强)</option>
+                            <option value="custom">自定义后端...</option>
+                        </select>
+                        <input type="text" id="custom-backend" class="hidden" placeholder="输入自定义后端地址 (以 /sub? 结尾)">
+                    </div>
+                    <div class="grid-col">
+                        <label class="label-text" for="sub-shortener">短链服务</label>
+                        <select id="sub-shortener">
+                            <option value="none">不使用(直连防错)</option>
+                            <option value="https://v1.mk/api?url=">v1.mk</option>
+                            <option value="https://d1.mk/api?url=">d1.mk</option>
+                            <option value="https://dlj.tf/api?url=">dlj.tf</option>
+                            <option value="https://suo.yt/api?url=">suo.yt</option>
+                            <option value="custom">自定义短链...</option>
+                        </select>
+                        <input type="text" id="custom-shortener" class="hidden" placeholder="输入自定义短链 API (以 = 结尾)">
+                    </div>
+                </div>
+                <div class="grid-row">
+                    <div class="grid-col">
+                        <label class="label-text" for="sub-config">远程配置</label>
+                        <select id="sub-config">
+                            <option value="">自适应识别(兼容性最高)</option>
+                            <optgroup label="--- ACL4SSR 官方原版 ---">
+                                <option value="https://raw.githubusercontent.com/ACL4SSR/ACL4SSR/master/Clash/config/ACL4SSR_Online_Full.ini">ACL4SSR_全分组 (全能首选)</option>
+                                <option value="https://raw.githubusercontent.com/ACL4SSR/ACL4SSR/master/Clash/config/ACL4SSR_Online_Mini.ini">ACL4SSR_精简版 (手机推荐)</option>
+                                <option value="https://raw.githubusercontent.com/ACL4SSR/ACL4SSR/master/Clash/config/ACL4SSR_Online_Full_NoAuto.ini">ACL4SSR_无测速 (手动选点)</option>
+                                <option value="https://raw.githubusercontent.com/ACL4SSR/ACL4SSR/master/Clash/config/ACL4SSR_Online_Full_AdblockPlus.ini">ACL4SSR_加强去广告</option>
+                            </optgroup>
+                            <optgroup label="--- zsokami 深度定制版 ---">
+                                <option value="https://raw.githubusercontent.com/zsokami/ACL4SSR/main/ACL4SSR_Online_Full_Mannix.ini">zsokami_全分组 (智能Emoji/IPLC优化)</option>
+                                <option value="https://raw.githubusercontent.com/zsokami/ACL4SSR/main/ACL4SSR_Online_Full_Mannix_No_DNS_Leak.ini">zsokami_全分组 (无DNS泄漏防劫持)</option>
+                                <option value="https://raw.githubusercontent.com/zsokami/ACL4SSR/main/ACL4SSR_Online_Mannix.ini">zsokami_精简版 (纯净列表)</option>
+                            </optgroup>
+                            <option value="custom">自定义远程配置...</option>
+                        </select>
+                        <input type="text" id="custom-config" class="hidden" placeholder="输入自定义远程配置链接 (以 .ini 结尾)">
+                    </div>
+                    <div class="grid-col">
+                        <label class="label-text">其他配置</label>
+                        <button type="button" class="btn" style="width:100%; height:48px; background:var(--bg-input); border:1px solid var(--border-color); border-radius:var(--radius-btn); color:var(--text-main); font-size:14px; text-align:left; padding:0 16px;" onclick="toggleInlineConfig()">参数微调</button>
+                        <div id="inline-config-panel" class="config-inline-panel">
+                            <div style="display: flex; gap: 20px;">
+                                <div style="flex:1;">
+                                    <label class="config-option-row"><input type="checkbox" id="chk-emoji" checked> Emoji</label>
+                                    <label class="config-option-row"><input type="checkbox" id="chk-scv" checked> 跳过验证</label>
+                                    <label class="config-option-row"><input type="checkbox" id="chk-udp" checked> 启用 UDP</label>
+                                    <label class="config-option-row"><input type="checkbox" id="chk-expand" checked> 规则展开</label>
+                                </div>
+                                <div style="flex:1;">
+                                    <label class="config-option-row"><input type="checkbox" id="chk-append-type"> 节点类型</label>
+                                    <label class="config-option-row"><input type="checkbox" id="chk-sort"> 排序节点</label>
+                                    <label class="config-option-row"><input type="checkbox" id="chk-fdn"> 过滤节点</label>
+                                    <label class="config-option-row"><input type="checkbox" id="chk-special"> 去除符号</label>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <button class="btn primary-btn" id="sub-gen-btn" onclick="generateSub()" style="margin-top:10px;">🚀一键生成</button>
+            <div id="sub-promo" class="promo-text" style="display:none; margin-top:24px;">👇👇👇<br>🌎ZooDirector_<br>👍专注跨境出海网络</div>
+            <div id="sub-result">
+                <span id="res-title" style="font-size:13px; color:var(--apple-green); font-weight:700;">✨ 链接已成功生成：</span>
+                <input type="text" id="sub-output" readonly style="margin-top:10px; background:var(--bg-input);">
+                <button class="btn copy-btn" onclick="copySubText()">复制订阅地址</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const el = id => document.getElementById(id);
+        const UI_CONFIG = { originalTipsHTML: `<strong style="color:var(--text-main);">⚡TIPS（注意事项）:</strong><br>本人所提供节点命名格式为<br>（国家-用户名-暂停日期）<br>仅用作备注标识，可自行更改` };
+
+        function toggleTheme() {
+            const currentTheme = document.documentElement.getAttribute('data-theme');
+            const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
+            document.documentElement.setAttribute('data-theme', newTheme);
+            el('theme-toggle').innerText = newTheme === 'dark' ? '☀️' : '🌙';
+            localStorage.setItem('theme', newTheme);
+        }
+
+        function switchTab(tab) {
+            ['qr', 'sub'].forEach(t => {
+                el(`tab-${t}`).classList.toggle('active', t === tab);
+                el(`section-${t}`).classList.toggle('hidden', t !== tab);
+            });
+        }
+
+        function toggleAdvanced() {
+            const content = el('advanced-settings');
+            content.style.display = content.style.display === 'block' ? 'none' : 'block';
+        }
+
+        function toggleInlineConfig() {
+            const panel = el('inline-config-panel');
+            panel.style.display = (panel.style.display === 'block' ? 'none' : 'block');
+        }
+
+        function showToast(message) {
+            const toast = el('toast');
+            toast.innerText = message;
+            toast.classList.add('show');
+            setTimeout(() => toast.classList.remove('show'), 2500);
+        }
+
+        function extractNodeName(text) {
+            if (!text) return "";
+            text = text.trim();
+            if (text.includes("#")) {
+                let parts = text.split("#");
+                let name = decodeURIComponent(parts[parts.length - 1]);
+                let match = name.match(/^([^\s\-]+)-([^\s\-]+)-([^\s\-]*?\d+(?:\.\d+)*)/);
+                return match ? match[0] : ""; 
+            }
+            return "";
+        }
+
+        el('sub-backend').addEventListener('change', e => el('custom-backend').classList.toggle('hidden', e.target.value !== 'custom'));
+        el('sub-shortener').addEventListener('change', e => el('custom-shortener').classList.toggle('hidden', e.target.value !== 'custom'));
+        el('sub-config').addEventListener('change', e => el('custom-config').classList.toggle('hidden', e.target.value !== 'custom'));
+
+        let qrTimeout;
+        el('text-input').addEventListener('input', () => {
+            clearTimeout(qrTimeout);
+            qrTimeout = setTimeout(() => generateQR(), 300);
+        });
+
+        function generateQR() {
+            const rawText = el('text-input').value.trim();
+            if(!rawText) {
+                el('qr-poster').style.display = "none";
+                el('copy-poster-btn').classList.add('hidden');
+                el('qr-error').classList.add('hidden');
+                return;
+            }
+            el('qrcode').innerHTML = "";
+            try {
+                let textLen = rawText.length;
+                let ecLevel = QRCode.CorrectLevel.M;
+                if (textLen < 120) ecLevel = QRCode.CorrectLevel.H;
+                else if (textLen < 220) ecLevel = QRCode.CorrectLevel.Q;
+                else if (textLen < 350) ecLevel = QRCode.CorrectLevel.M;
+                else ecLevel = QRCode.CorrectLevel.L;
+
+                new QRCode(el('qrcode'), { text: rawText, width: 400, height: 400, correctLevel: ecLevel });
+                if (el('qrcode').children.length === 0) throw new Error();
+
+                el('qr-error').classList.add('hidden');
+                const nodeName = extractNodeName(rawText.split('\n')[0]);
+                if(nodeName !== "") {
+                    el('node-tips').classList.remove('hidden');
+                    el('node-tips').innerHTML = UI_CONFIG.originalTipsHTML;
+                    el('embedded-info').innerText = nodeName;
+                    el('embedded-info').classList.remove('hidden');
+                } else {
+                    el('node-tips').classList.add('hidden');
+                    el('embedded-info').innerText = "Zoo-Net";
+                    el('embedded-info').classList.remove('hidden');
+                }
+                el('qr-poster').style.display = "block";
+                el('copy-poster-btn').classList.remove('hidden');
+            } catch (e) {
+                el('qr-poster').style.display = "none";
+                el('copy-poster-btn').classList.add('hidden');
+                el('qr-error').classList.remove('hidden');
+            }
+        }
+
+        // 修改点：改为 async 异步函数以支持真实的网络请求和回退机制
+        async function generateSub() {
+            let rawLinks = el('sub-links').value.trim();
+            if(!rawLinks) return showToast("❌ 请输入链接");
+
+            let processedLinks = rawLinks.split('\n');
+            let defaultName = extractNodeName(processedLinks[0]) || "ZooNet_Sub";
+            let filename = el('sub-filename').value.trim() || defaultName;
+
+            let backend = el('sub-backend').value === 'custom' ? el('custom-backend').value : el('sub-backend').value;
+            let target = el('sub-target').value;
+            let links = encodeURIComponent(processedLinks.join('|'));
+            
+            // 初始修复：在拼接前确保 links 里的 tuic 冒号正确
+            if (links.includes('tuic')) {
+                links = links.replaceAll('%3A', ':');
+            }
+
+            let shortener = el('sub-shortener').value === 'custom' ? el('custom-shortener').value : el('sub-shortener').value;
+            let configUrl = el('sub-config').value === 'custom' ? el('custom-config').value : el('sub-config').value;
+            const config = configUrl ? "&config=" + encodeURIComponent(configUrl) : "";
+            
+            let url = `${backend}target=${target}&url=${links}${config}&filename=${encodeURIComponent(filename)}&emoji=${el('chk-emoji').checked}&udp=${el('chk-udp').checked}&scv=${el('chk-scv').checked}&append_type=${el('chk-append-type').checked}&sort=${el('chk-sort').checked}&expand=${el('chk-expand').checked}&new_name=true&flag=clash%20meta&dev=true`;
+            
+            // 方案A 深度加固：针对 tuic 节点的编码进行强制还原
+            if (url.includes('tuic')) {
+                url = url.replaceAll('%253A', ':').replaceAll('%3A', ':');
+            }
+
+            let finalOutputUrl = url; // 默认使用原生转换后长链
+            const genBtn = el('sub-gen-btn');
+
+            // 核心修改：发起真实 Fetch 请求获取短链，并增加失败 Try-Catch 回退机制
+            if (shortener !== "none" && shortener) {
+                const apiRequestUrl = shortener + encodeURIComponent(url);
+                genBtn.innerText = "⏳ 正在生成短链...";
+                genBtn.style.pointerEvents = "none"; // 临时禁用按钮防止重复点击
+
+                try {
+                    const response = await fetch(apiRequestUrl);
+                    if (response.ok) {
+                        const text = await response.text();
+                        // 校验返回的数据是否为有效链接
+                        if (text.trim().startsWith("http")) {
+                            finalOutputUrl = text.trim();
+                            showToast("✔️ 短链生成成功!");
+                        } else {
+                            // 部分API可能返回JSON结构，进行简单容错尝试
+                            try {
+                                const jsonObj = JSON.parse(text);
+                                finalOutputUrl = jsonObj.shorturl || jsonObj.url || url;
+                                if (finalOutputUrl !== url) showToast("✔️ 短链生成成功!");
+                            } catch (e) {
+                                console.warn("无法解析的短链格式，回退至长链:", text);
+                                showToast("⚠️ 短链解析失败，已回退为长链");
+                            }
+                        }
+                    } else {
+                        console.warn("短链服务请求失败状态码:", response.status);
+                        showToast("⚠️ 短链服务异常，已回退为长链");
+                    }
+                } catch (error) {
+                    console.error("跨域拦截或网络错误:", error);
+                    showToast("⚠️ 短链请求被拦截(CORS/网络)，已回退为长链");
+                } finally {
+                    genBtn.innerText = "🚀一键生成"; // 恢复按钮
+                    genBtn.style.pointerEvents = "auto";
+                }
+            } else {
+                showToast("✔️ Success!");
+            }
+
+            el('sub-output').value = finalOutputUrl;
+            el('sub-promo').style.display = "block";
+            el('sub-result').style.display = "block";
+            
+            // 让宣传模块和结果模块同步执行“跳动”动画
+            ['sub-promo', 'sub-result'].forEach(id => {
+                const targetEl = el(id);
+                targetEl.classList.remove('flash-update');
+                void targetEl.offsetWidth; // 触发重绘以重新开始动画
+                targetEl.classList.add('flash-update');
+            });
+        }
+
+        function copySubText() {
+            el('sub-output').select();
+            document.execCommand('copy');
+            showToast("✨ 订阅地址已复制");
+        }
+
+        function copyPoster() {
+            const btn = el('copy-poster-btn');
+            const poster = el('qr-poster');
+            btn.innerText = "正在渲染海报...";
+            html2canvas(poster, { scale: 3, backgroundColor: document.documentElement.getAttribute('data-theme') === 'dark' ? '#1c1c1e' : '#ffffff' }).then(canvas => {
+                canvas.toBlob(blob => {
+                    const item = new ClipboardItem({ "image/png": blob });
+                    navigator.clipboard.write([item]).then(() => {
+                        poster.classList.remove('flash-update');
+                        void poster.offsetWidth; 
+                        poster.classList.add('flash-update');
+                        poster.classList.add('success-flash-blink');
+                        showToast("✨ 图片已成功复制");
+                        btn.innerText = "📸 复制图片到剪贴板";
+                    });
+                });
+            });
+        }
+    </script>
+</body>
+</html>
