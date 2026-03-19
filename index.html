@@ -2,7 +2,7 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Zoo-Net Tools</title>
     
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js" defer></script>
@@ -73,7 +73,8 @@
             -moz-osx-font-smoothing: grayscale;
             text-rendering: optimizeLegibility;
             background: linear-gradient(120deg, var(--bg-page) 0%, var(--bg-page) 100%);
-            display: flex; justify-content: center; align-items: center;
+            display: flex; justify-content: center; 
+            align-items: center; /* 默认PC端垂直居中 */
             min-height: 100vh; margin: 0; padding: 20px; box-sizing: border-box;
             transition: background 0.4s ease;
         }
@@ -112,14 +113,29 @@
         .tab-btn { flex: 1; padding: 8px 0; border: none; background: transparent; border-radius: 9px; font-size: 14px; font-weight: 600; color: var(--text-main); cursor: pointer; transition: all 0.2s ease; }
         .tab-btn.active { background-color: var(--apple-blue); color: var(--tab-active-text); box-shadow: 0 3px 8px rgba(0, 122, 255, 0.3); }
 
-        textarea, input[type="text"], select { width: 100%; box-sizing: border-box; padding: 14px 16px; margin-bottom: 16px; border: 1px solid var(--border-color); border-radius: var(--radius-btn); font-size: 14px; font-family: var(--font-mono); outline: none; background-color: var(--bg-input); transition: all 0.25s ease; color: var(--text-main); }
+        textarea, input[type="text"], select { 
+            width: 100%; box-sizing: border-box; padding: 14px 16px; margin-bottom: 16px; 
+            border: 1px solid var(--border-color); border-radius: var(--radius-btn); 
+            font-size: 14px; font-family: var(--font-mono); outline: none; 
+            background-color: var(--bg-input); transition: all 0.25s ease; color: var(--text-main); 
+        }
         
+        select {
+            -webkit-appearance: none;
+            appearance: none;
+            background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%236e6e73' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e");
+            background-repeat: no-repeat;
+            background-position: right 14px center;
+            background-size: 16px;
+            padding-right: 36px;
+        }
+
         #custom-backend, #custom-shortener, #custom-config { font-size: 11.6px; }
 
         textarea:focus, input[type="text"]:focus, select:focus { border-color: var(--apple-blue); box-shadow: var(--shadow-focus); }
 
         .grid-row { display: flex; gap: 14px; text-align: left; }
-        .grid-col { flex: 1; }
+        .grid-col { flex: 1; width: 100%; }
 
         .advanced-toggle { text-align: center; font-size: 13px; color: var(--apple-blue); cursor: pointer; padding: 11.6px; margin-bottom: 16px; border-radius: 10px; background: rgba(0, 122, 255, 0.08); font-weight: 600; user-select: none; }
         .advanced-content { display: none; animation: fadeIn 0.3s ease-out forwards; }
@@ -129,7 +145,7 @@
         .primary-btn { background: var(--apple-blue-gradient); color: white; padding: 14px 44px; font-size: 16px; min-width: 180px; display: inline-block; box-shadow: 0 4px 11.6px rgba(0, 122, 255, 0.3); }
         .primary-btn:hover, #copy-poster-btn:hover { transform: translateY(-2px); filter: brightness(1.1); box-shadow: 0 8px 20px rgba(0, 122, 255, 0.4); }
 
-        #sub-result { margin-top: 10px; padding: 18px 22px; background: rgba(52, 199, 89, 0.08); border: 1px solid rgba(52, 199, 89, 0.2); border-radius: var(--radius-btn); display: none; text-align: left; }
+        #sub-result { padding: 18px 22px; background: rgba(52, 199, 89, 0.08); border: 1px solid rgba(52, 199, 89, 0.2); border-radius: var(--radius-btn); text-align: left; }
 
         .success-flash-blink { animation: flashPulse 0.5s ease-out; }
         @keyframes flashPulse { 0% { filter: brightness(1); } 50% { filter: brightness(0.85); opacity: 0.8; } 100% { filter: brightness(1); opacity: 1; } }
@@ -137,35 +153,46 @@
         .flash-update { animation: containerPop 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
         @keyframes containerPop { 0% { transform: scale(0.97); } 50% { transform: scale(1.02); } 100% { transform: scale(1); } }
 
-        .text-pop-active { display: inline-block; animation: textPop 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
-        @keyframes textPop { 0% { transform: scale(0.85); opacity: 0.5; } 50% { transform: scale(1.05); opacity: 1; } 100% { transform: scale(1); opacity: 1; } }
-
-        .toast { position: fixed; top: 30px; left: 50%; transform: translateX(-50%) translateY(-20px); background-color: rgba(0, 0, 0, 0.85); color: white; padding: 11.6px 24px; border-radius: 14px; font-size: 14px; font-weight: 600; z-index: 10000; opacity: 0; visibility: hidden; transition: all 0.4s ease; backdrop-filter: blur(15px); }
+        .toast { position: fixed; top: calc(env(safe-area-inset-top, 20px) + 20px); left: 50%; transform: translateX(-50%) translateY(-20px); background-color: rgba(0, 0, 0, 0.85); color: white; padding: 11.6px 24px; border-radius: 14px; font-size: 14px; font-weight: 600; z-index: 10000; opacity: 0; visibility: hidden; transition: all 0.4s ease; backdrop-filter: blur(15px); text-align: center; max-width: 90%; word-break: break-all; }
         .toast.show { opacity: 1; visibility: visible; transform: translateX(-50%) translateY(0); }
 
-        .copy-btn { background-color: var(--apple-blue); color: #fff; padding: 11.6px 30px; border-radius: 8px; margin: 15px auto 0; display: block; }
+        .copy-btn { background-color: var(--apple-blue); color: #fff; padding: 11.6px 30px; border-radius: 8px; margin: 15px auto 0; display: block; width: 100%; box-sizing: border-box;}
         
         .hidden { display: none !important; }
         .label-text { display: block; font-size: 13px; color: var(--text-sub); margin-bottom: 6px; font-weight: 600; text-align: left; padding-left: 2px; }
 
-        #qr-poster { background: rgba(52, 199, 89, 0.08); border: 1px solid rgba(52, 199, 89, 0.2); padding: 25px 25px 11.6px 25px; border-radius: var(--radius-card); display: none; margin: 10px auto 0 auto; width: fit-content; position: relative; transform: translateZ(0); }
+        #qr-poster { background: rgba(52, 199, 89, 0.08); border: 1px solid rgba(52, 199, 89, 0.2); padding: 25px 20px 15px 20px; border-radius: var(--radius-card); display: none; margin: 10px auto 0 auto; width: 100%; max-width: 440px; box-sizing: border-box; position: relative; transform: translateZ(0); }
         
-        .qr-wrapper { position: relative; display: inline-flex; justify-content: center; align-items: center; }
-        #qrcode { display: flex; justify-content: center; align-items: center; padding: 10px; background: white; margin-bottom: 5px; border-radius: 16px; box-shadow: 0 4px 11.6px rgba(0,0,0,0.05); }
-        #qrcode img { width: 300px !important; height: 300px !important; image-rendering: pixelated; }
+        .qr-wrapper { position: relative; display: inline-flex; justify-content: center; align-items: center; width: 100%; box-sizing: border-box; }
+        #qrcode { display: flex; justify-content: center; align-items: center; padding: 10px; background: white; margin-bottom: 5px; border-radius: 16px; box-shadow: 0 4px 11.6px rgba(0,0,0,0.05); max-width: 100%; box-sizing: border-box; }
+        #qrcode img, #qrcode canvas { max-width: 100% !important; height: auto !important; image-rendering: pixelated; border-radius: 8px; }
 
         #embedded-info { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); background-color: var(--qr-info-bg); color: var(--qr-info-text); font-size: 11.6px; font-weight: 800; padding: 4px 8px; border-radius: 6px; box-shadow: 0 0 0 2px var(--qr-info-border); z-index: 10; transition: all 0.4s ease; max-width: 100px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
-        .tips-text { width: 320px; box-sizing: border-box; margin: 6px auto 0 auto; font-size: 13px; color: var(--tips-text); line-height: 1.6; background: var(--bg-input); border: 1px solid var(--border-color); padding: 11.6px; border-radius: 16px; transition: all 0.4s ease; }
+        .tips-text { width: 100%; max-width: 320px; box-sizing: border-box; margin: 6px auto 0 auto; font-size: 13px; color: var(--tips-text); line-height: 1.6; background: var(--bg-input); border: 1px solid var(--border-color); padding: 11.6px; border-radius: 16px; transition: all 0.4s ease; word-break: break-all; }
         .footer-brand { text-align: center; font-size: 11.6px; color: #d2d2d7; margin-top: 11.6px; font-weight: 800; letter-spacing: 0.12em; text-transform: uppercase; }
 
-        #copy-poster-btn { background: var(--apple-blue-gradient); color: white; padding: 14px 44px; font-size: 16px; margin-top: 20px; }
+        #copy-poster-btn { background: var(--apple-blue-gradient); color: white; padding: 14px 44px; font-size: 16px; margin-top: 20px; width: 100%; box-sizing: border-box; }
         #qr-error { text-align: center; margin: 10px 0; color: #ff3b30; font-weight: 700; font-size: 15px; }
         .promo-text { text-align: center; margin-bottom: 15px; font-weight: 700; color: var(--text-main); line-height: 1.6; }
 
         .config-inline-panel { background: var(--inline-config-bg); border-radius: 11.6px; padding: 11.6px; margin-bottom: 16px; display: none; text-align: left; }
         .config-option-row { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; cursor: pointer; font-size: 13px; color: var(--text-main); }
         .config-option-row input { width: 14px; height: 14px; accent-color: var(--apple-blue); margin: 0; }
+
+        /* 🔥 移动端专属媒体查询（彻底不影响PC） */
+        @media (max-width: 600px) {
+            body { align-items: flex-start; } /* 手机端靠上显示，避开键盘遮挡 */
+            .container { padding: 25px 20px; margin-top: 3vh; }
+            textarea, input[type="text"], select { font-size: 16px !important; }
+            #custom-backend, #custom-shortener, #custom-config { font-size: 16px !important; }
+            
+            .grid-row { flex-direction: column; gap: 0px; }
+            .grid-col { width: 100%; }
+            
+            h2 { font-size: 22px; margin-bottom: 20px; }
+            .primary-btn { width: 100%; }
+        }
     </style>
 </head>
 <body>
@@ -300,11 +327,14 @@
             </div>
 
             <button class="btn primary-btn" id="sub-gen-btn" onclick="generateSub()" style="margin-top:10px;">🚀一键生成</button>
-            <div id="sub-promo" class="promo-text" style="display:none; margin-top:24px;">👇👇👇<br>🌎ZooDirector_<br>👍专注跨境出海网络</div>
-            <div id="sub-result">
-                <span id="res-title" style="font-size:13px; color:var(--apple-green); font-weight:700;">✨ 链接已成功生成：</span>
-                <input type="text" id="sub-output" readonly style="margin-top:10px; background:var(--bg-input);">
-                <button class="btn copy-btn" onclick="copySubText()">复制订阅地址</button>
+            
+            <div id="sub-output-wrapper" style="display:none; margin-top:24px;">
+                <div id="sub-promo" class="promo-text">👇👇👇<br>🌎ZooDirector_<br>👍专注跨境出海网络</div>
+                <div id="sub-result">
+                    <span id="res-title" style="font-size:13px; color:var(--apple-green); font-weight:700;">✨ 链接已成功生成：</span>
+                    <input type="text" id="sub-output" readonly style="margin-top:10px; background:var(--bg-input);">
+                    <button class="btn copy-btn" onclick="copySubText()">复制订阅地址</button>
+                </div>
             </div>
         </div>
     </div>
@@ -342,7 +372,7 @@
             const toast = el('toast');
             toast.innerText = message;
             toast.classList.add('show');
-            setTimeout(() => toast.classList.remove('show'), 3500); // 增加报错显示时长方便排查
+            setTimeout(() => toast.classList.remove('show'), 3500); 
         }
 
         function extractNodeName(text) {
@@ -384,7 +414,10 @@
                 else if (textLen < 350) ecLevel = QRCode.CorrectLevel.M;
                 else ecLevel = QRCode.CorrectLevel.L;
 
-                new QRCode(el('qrcode'), { text: rawText, width: 400, height: 400, correctLevel: ecLevel });
+                // 核心修复：侦测设备宽度。如果是PC(>600)，生成霸气大尺寸二维码；如果是手机，自动缩小适配屏幕
+                let qrSize = window.innerWidth > 600 ? 380 : 260;
+                new QRCode(el('qrcode'), { text: rawText, width: qrSize, height: qrSize, correctLevel: ecLevel });
+                
                 if (el('qrcode').children.length === 0) throw new Error();
 
                 el('qr-error').classList.add('hidden');
@@ -442,7 +475,6 @@
                 genBtn.style.pointerEvents = "none";
 
                 try {
-                    // 方案一：使用国际接口 + AllOrigins 代理解决CORS (无防机器人拦截，100%成功率)
                     if (shortener === "tinyurl" || shortener === "isgd") {
                         let apiEndpoint = shortener === "tinyurl" 
                             ? "https://tinyurl.com/api-create.php?url=" 
@@ -454,7 +486,6 @@
                         let response = await fetch(proxyUrl);
                         let json = await response.json();
                         
-                        // allorigins 将请求回来的内容存放在 contents 字段中
                         if (json.contents && json.contents.trim().startsWith("http")) {
                             finalOutputUrl = json.contents.trim();
                             showToast(`✔️ ${shortener === "tinyurl" ? "TinyURL" : "is.gd"} 代理生成成功!`);
@@ -462,17 +493,14 @@
                             throw new Error("接口被墙或代理返回异常");
                         }
                     } 
-                    // 方案二：传统 GET 接口（防错兼容）
                     else if (shortener.includes("url=")) {
                         let response = await fetch(shortener + encodeURIComponent(url));
                         let text = await response.text();
                         finalOutputUrl = text.trim().startsWith("http") ? text.trim() : url;
                         if (finalOutputUrl !== url) showToast("✔️ GET短链生成成功!");
                     } 
-                    // 方案三：MyUrls 接口方案（如 v1.mk/short），使用安全 Base64 转码防崩溃
                     else {
                         let formData = new FormData();
-                        // 修正点：原生 btoa 不支持特殊字符，这里强制转义确保无论什么订阅名都不会引起 btoa() 报错崩溃
                         let safeBase64Str = btoa(unescape(encodeURIComponent(url)));
                         formData.append("longUrl", safeBase64Str);
 
@@ -491,7 +519,6 @@
                         }
                     }
                 } catch (error) {
-                    // 在控制台输出精准错误并通知用户
                     console.error("短链服务拦截或报错，原因: ", error);
                     showToast(`⚠️ 短链生成受阻(${error.message.substring(0,8)}...)，已回退长链`);
                     finalOutputUrl = url;
@@ -504,15 +531,12 @@
             }
 
             el('sub-output').value = finalOutputUrl;
-            el('sub-promo').style.display = "block";
-            el('sub-result').style.display = "block";
             
-            ['sub-promo', 'sub-result'].forEach(id => {
-                const targetEl = el(id);
-                targetEl.classList.remove('flash-update');
-                void targetEl.offsetWidth; 
-                targetEl.classList.add('flash-update');
-            });
+            const targetEl = el('sub-output-wrapper');
+            targetEl.style.display = "block";
+            targetEl.classList.remove('flash-update');
+            void targetEl.offsetWidth; 
+            targetEl.classList.add('flash-update');
         }
 
         function copySubText() {
