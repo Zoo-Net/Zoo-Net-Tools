@@ -244,14 +244,16 @@
                     <div class="grid-col">
                         <label class="label-text" for="sub-shortener">短链服务</label>
                         <select id="sub-shortener">
-                            <option value="tinyurl">TinyURL (国际代理/极致稳定)</option>
-                            <option value="isgd">is.gd (国际代理/无墙推荐)</option>
-                            <option value="https://v1.mk/short">v1.mk (可能报异常)</option>
+                            <option value="https://v1.mk/short">v1.mk</option>
                             <option value="https://d1.mk/short">d1.mk</option>
+							<option value="https://dlj.tf/short">dlj.tf</option>
+                            <option value="https://suo.yt/short">suo.yt</option>
+							<option value="isgd">is.gd (国际代理/无墙推荐)</option>
+							<option value="tinyurl">TinyURL (国际代理/极致稳定)</option>
                             <option value="none">不使用(仅长链直连)</option>
                             <option value="custom">自定义短链...</option>
                         </select>
-                        <input type="text" id="custom-shortener" class="hidden" placeholder="输入自定义短链 API (如 https://v1.mk/short)">
+                        <input type="text" id="custom-shortener" class="hidden" placeholder="输入自定义短链 API (以 = 结尾)">
                     </div>
                 </div>
                 <div class="grid-row">
