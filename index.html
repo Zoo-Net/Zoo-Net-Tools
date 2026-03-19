@@ -15,7 +15,6 @@
 
     <style>
         :root {
-            /* 🌞 明亮模式变量 */
             --bg-page: #e2e2e7;
             --bg-card: rgba(255, 255, 255, 0.85);
             --bg-input: rgba(255, 255, 255, 0.5);
@@ -38,7 +37,6 @@
             
             --tab-active-text: #ffffff; 
 
-            /* 二维码中心标识变量 */
             --qr-info-bg: rgba(255, 255, 255, 0.95);
             --qr-info-text: #000000;
             --qr-info-border: #ffffff;
@@ -47,7 +45,6 @@
             --font-mono: "SF Mono", "Monaco", "Menlo", "Consolas", "Liberation Mono", "Courier New", monospace;
         }
 
-        /* 🌙 暗黑模式变量 */
         [data-theme="dark"] {
             --bg-page: #1c1c1e;
             --bg-card: rgba(28, 28, 30, 0.75);
@@ -117,7 +114,6 @@
 
         textarea, input[type="text"], select { width: 100%; box-sizing: border-box; padding: 14px 16px; margin-bottom: 16px; border: 1px solid var(--border-color); border-radius: var(--radius-btn); font-size: 14px; font-family: var(--font-mono); outline: none; background-color: var(--bg-input); transition: all 0.25s ease; color: var(--text-main); }
         
-        /* 特别优化：调整自定义输入框字体大小以确保完整显示提示文字 */
         #custom-backend, #custom-shortener, #custom-config { font-size: 11.6px; }
 
         textarea:focus, input[type="text"]:focus, select:focus { border-color: var(--apple-blue); box-shadow: var(--shadow-focus); }
@@ -249,13 +245,13 @@
                         <label class="label-text" for="sub-shortener">短链服务</label>
                         <select id="sub-shortener">
                             <option value="none">不使用(直连防错)</option>
-                            <option value="https://v1.mk/api?url=">v1.mk</option>
-                            <option value="https://d1.mk/api?url=">d1.mk</option>
-                            <option value="https://dlj.tf/api?url=">dlj.tf</option>
-                            <option value="https://suo.yt/api?url=">suo.yt</option>
+                            <option value="https://v1.mk/short">v1.mk</option>
+                            <option value="https://d1.mk/short">d1.mk</option>
+                            <option value="https://dlj.tf/short">dlj.tf</option>
+                            <option value="https://suo.yt/short">suo.yt</option>
                             <option value="custom">自定义短链...</option>
                         </select>
-                        <input type="text" id="custom-shortener" class="hidden" placeholder="输入自定义短链 API (以 = 结尾)">
+                        <input type="text" id="custom-shortener" class="hidden" placeholder="输入自定义短链 API (如 https://v1.mk/short)">
                     </div>
                 </div>
                 <div class="grid-row">
@@ -440,56 +436,40 @@
             const genBtn = el('sub-gen-btn');
 
             if (shortener !== "none" && shortener) {
-                const apiRequestUrl = shortener + encodeURIComponent(url);
                 genBtn.innerText = "⏳ 正在生成短链...";
                 genBtn.style.pointerEvents = "none";
 
-                // 智能提取短链的内部通用函数，支持解析 JSON 和普通文本
-                const parseShortLinkText = (text, fallbackUrl) => {
-                    text = text.trim();
-                    if (text.startsWith("http")) return text;
-                    try {
-                        const jsonObj = JSON.parse(text);
-                        return jsonObj.shorturl || jsonObj.shortUrl || jsonObj.url || jsonObj.data || fallbackUrl;
-                    } catch (e) {
-                        return fallbackUrl;
-                    }
-                };
-
                 try {
-                    // 第 1 步：尝试直连短链接口 (针对少数支持 CORS 的 API)
-                    let response = await fetch(apiRequestUrl);
-                    let text = await response.text();
-                    let parsedUrl = parseShortLinkText(text, url);
-                    
-                    if (parsedUrl !== url) {
-                        finalOutputUrl = parsedUrl;
-                        showToast("✔️ 短链生成成功!");
+                    // 如果用户强制输入了包含 url= 的老式 GET 接口（防错兼容）
+                    if (shortener.includes("url=")) {
+                        let response = await fetch(shortener + encodeURIComponent(url));
+                        let text = await response.text();
+                        finalOutputUrl = text.trim().startsWith("http") ? text.trim() : url;
+                        if (finalOutputUrl !== url) showToast("✔️ GET短链生成成功!");
                     } else {
-                        throw new Error("直连格式无法解析");
+                        // 核心：模拟 sub-web 标准 MyUrls 的 FormData + Base64 + POST 机制
+                        let formData = new FormData();
+                        // 对已经组合完毕的长链接进行 Base64 编码 (跟 sub-web 的底层完全一致)
+                        formData.append("longUrl", btoa(url));
+
+                        let response = await fetch(shortener, {
+                            method: 'POST',
+                            body: formData
+                        });
+                        
+                        let json = await response.json();
+                        
+                        if (json.Code === 1 && json.ShortUrl) {
+                            finalOutputUrl = json.ShortUrl;
+                            showToast("✔️ 短链生成成功!");
+                        } else {
+                            throw new Error(json.Message || "服务端返回格式异常");
+                        }
                     }
                 } catch (error) {
-                    console.warn("直连报错(大概率CORS拦截)，正在尝试使用代理中转...");
-                    
-                    try {
-                        // 第 2 步：直连失败，启用代理中转 (使用 allorigins 解决跨域)
-                        const proxyUrl = "https://api.allorigins.win/raw?url=" + encodeURIComponent(apiRequestUrl);
-                        let proxyResponse = await fetch(proxyUrl);
-                        let proxyText = await proxyResponse.text();
-                        let parsedProxyUrl = parseShortLinkText(proxyText, url);
-
-                        if (parsedProxyUrl !== url) {
-                            finalOutputUrl = parsedProxyUrl;
-                            showToast("✔️ 代理短链生成成功!");
-                        } else {
-                            throw new Error("代理格式无法解析");
-                        }
-                    } catch (proxyError) {
-                        // 第 3 步：最坏情况，彻底断网或服务不可用，触发回退机制
-                        console.error("跨域代理也失败了:", proxyError);
-                        showToast("⚠️ 短链接口拒绝访问，已自动回退长链");
-                        finalOutputUrl = url;
-                    }
+                    console.error("短链服务拦截或报错:", error);
+                    showToast("⚠️ 短链服务异常，已平滑回退为长链");
+                    finalOutputUrl = url;
                 } finally {
                     genBtn.innerText = "🚀一键生成"; 
                     genBtn.style.pointerEvents = "auto";
