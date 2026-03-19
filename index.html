@@ -410,7 +410,6 @@
             }
         }
 
-        // 修改点：改为 async 异步函数以支持真实的网络请求和回退机制
         async function generateSub() {
             let rawLinks = el('sub-links').value.trim();
             if(!rawLinks) return showToast("❌ 请输入链接");
@@ -423,7 +422,6 @@
             let target = el('sub-target').value;
             let links = encodeURIComponent(processedLinks.join('|'));
             
-            // 初始修复：在拼接前确保 links 里的 tuic 冒号正确
             if (links.includes('tuic')) {
                 links = links.replaceAll('%3A', ':');
             }
@@ -434,48 +432,66 @@
             
             let url = `${backend}target=${target}&url=${links}${config}&filename=${encodeURIComponent(filename)}&emoji=${el('chk-emoji').checked}&udp=${el('chk-udp').checked}&scv=${el('chk-scv').checked}&append_type=${el('chk-append-type').checked}&sort=${el('chk-sort').checked}&expand=${el('chk-expand').checked}&new_name=true&flag=clash%20meta&dev=true`;
             
-            // 方案A 深度加固：针对 tuic 节点的编码进行强制还原
             if (url.includes('tuic')) {
                 url = url.replaceAll('%253A', ':').replaceAll('%3A', ':');
             }
 
-            let finalOutputUrl = url; // 默认使用原生转换后长链
+            let finalOutputUrl = url; 
             const genBtn = el('sub-gen-btn');
 
-            // 核心修改：发起真实 Fetch 请求获取短链，并增加失败 Try-Catch 回退机制
             if (shortener !== "none" && shortener) {
                 const apiRequestUrl = shortener + encodeURIComponent(url);
                 genBtn.innerText = "⏳ 正在生成短链...";
-                genBtn.style.pointerEvents = "none"; // 临时禁用按钮防止重复点击
+                genBtn.style.pointerEvents = "none";
+
+                // 智能提取短链的内部通用函数，支持解析 JSON 和普通文本
+                const parseShortLinkText = (text, fallbackUrl) => {
+                    text = text.trim();
+                    if (text.startsWith("http")) return text;
+                    try {
+                        const jsonObj = JSON.parse(text);
+                        return jsonObj.shorturl || jsonObj.shortUrl || jsonObj.url || jsonObj.data || fallbackUrl;
+                    } catch (e) {
+                        return fallbackUrl;
+                    }
+                };
 
                 try {
-                    const response = await fetch(apiRequestUrl);
-                    if (response.ok) {
-                        const text = await response.text();
-                        // 校验返回的数据是否为有效链接
-                        if (text.trim().startsWith("http")) {
-                            finalOutputUrl = text.trim();
-                            showToast("✔️ 短链生成成功!");
-                        } else {
-                            // 部分API可能返回JSON结构，进行简单容错尝试
-                            try {
-                                const jsonObj = JSON.parse(text);
-                                finalOutputUrl = jsonObj.shorturl || jsonObj.url || url;
-                                if (finalOutputUrl !== url) showToast("✔️ 短链生成成功!");
-                            } catch (e) {
-                                console.warn("无法解析的短链格式，回退至长链:", text);
-                                showToast("⚠️ 短链解析失败，已回退为长链");
-                            }
-                        }
+                    // 第 1 步：尝试直连短链接口 (针对少数支持 CORS 的 API)
+                    let response = await fetch(apiRequestUrl);
+                    let text = await response.text();
+                    let parsedUrl = parseShortLinkText(text, url);
+                    
+                    if (parsedUrl !== url) {
+                        finalOutputUrl = parsedUrl;
+                        showToast("✔️ 短链生成成功!");
                     } else {
-                        console.warn("短链服务请求失败状态码:", response.status);
-                        showToast("⚠️ 短链服务异常，已回退为长链");
+                        throw new Error("直连格式无法解析");
                     }
                 } catch (error) {
-                    console.error("跨域拦截或网络错误:", error);
-                    showToast("⚠️ 短链请求被拦截(CORS/网络)，已回退为长链");
+                    console.warn("直连报错(大概率CORS拦截)，正在尝试使用代理中转...");
+                    
+                    try {
+                        // 第 2 步：直连失败，启用代理中转 (使用 allorigins 解决跨域)
+                        const proxyUrl = "https://api.allorigins.win/raw?url=" + encodeURIComponent(apiRequestUrl);
+                        let proxyResponse = await fetch(proxyUrl);
+                        let proxyText = await proxyResponse.text();
+                        let parsedProxyUrl = parseShortLinkText(proxyText, url);
+
+                        if (parsedProxyUrl !== url) {
+                            finalOutputUrl = parsedProxyUrl;
+                            showToast("✔️ 代理短链生成成功!");
+                        } else {
+                            throw new Error("代理格式无法解析");
+                        }
+                    } catch (proxyError) {
+                        // 第 3 步：最坏情况，彻底断网或服务不可用，触发回退机制
+                        console.error("跨域代理也失败了:", proxyError);
+                        showToast("⚠️ 短链接口拒绝访问，已自动回退长链");
+                        finalOutputUrl = url;
+                    }
                 } finally {
-                    genBtn.innerText = "🚀一键生成"; // 恢复按钮
+                    genBtn.innerText = "🚀一键生成"; 
                     genBtn.style.pointerEvents = "auto";
                 }
             } else {
@@ -486,11 +502,10 @@
             el('sub-promo').style.display = "block";
             el('sub-result').style.display = "block";
             
-            // 让宣传模块和结果模块同步执行“跳动”动画
             ['sub-promo', 'sub-result'].forEach(id => {
                 const targetEl = el(id);
                 targetEl.classList.remove('flash-update');
-                void targetEl.offsetWidth; // 触发重绘以重新开始动画
+                void targetEl.offsetWidth; 
                 targetEl.classList.add('flash-update');
             });
         }
