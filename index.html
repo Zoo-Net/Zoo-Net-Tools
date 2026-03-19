@@ -5,8 +5,53 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Zoo-Net Tools</title>
     
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js" defer></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js" defer></script>
+    <script>
+        (function() {
+            function loadLibrary(name, primaryUrl, fallbackUrl) {
+                let script = document.createElement('script');
+                script.src = primaryUrl;
+                script.defer = true;
+                
+                let isLoaded = false;
+                
+                // 设置2秒超时竞速。如果主CDN被墙导致挂起（不报错但无响应），2秒后自动并行注入备用国际CDN
+                let timeoutId = setTimeout(() => {
+                    if (!isLoaded) {
+                        console.warn(`[CDN智能路由] ${name} 加载超时，正在无缝切换备用国际节点...`);
+                        let fallbackScript = document.createElement('script');
+                        fallbackScript.src = fallbackUrl;
+                        fallbackScript.defer = true;
+                        document.head.appendChild(fallbackScript);
+                    }
+                }, 2000);
+
+                script.onload = () => { isLoaded = true; clearTimeout(timeoutId); };
+                script.onerror = () => {
+                    if (!isLoaded) {
+                        isLoaded = true; 
+                        clearTimeout(timeoutId);
+                        console.warn(`[CDN智能路由] ${name} 访问拒绝，立刻切换备用国际节点...`);
+                        let fallbackScript = document.createElement('script');
+                        fallbackScript.src = fallbackUrl;
+                        fallbackScript.defer = true;
+                        document.head.appendChild(fallbackScript);
+                    }
+                };
+                
+                document.head.appendChild(script);
+            }
+
+            // 部署双节点：主节点(国内极速/国外CF) + 备用节点(纯国际顶级CDN)
+            loadLibrary('QRCode', 
+                'https://cdn.staticfile.net/qrcodejs/1.0.0/qrcode.min.js', 
+                'https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js'
+            );
+            loadLibrary('Html2Canvas', 
+                'https://cdn.staticfile.net/html2canvas/1.4.1/html2canvas.min.js', 
+                'https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js'
+            );
+        })();
+    </script>
     
     <script>
         const savedTheme = localStorage.getItem('theme') || (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
@@ -74,7 +119,7 @@
             text-rendering: optimizeLegibility;
             background: linear-gradient(120deg, var(--bg-page) 0%, var(--bg-page) 100%);
             display: flex; justify-content: center; 
-            align-items: center; /* 默认PC端垂直居中 */
+            align-items: center; 
             min-height: 100vh; margin: 0; padding: 20px; box-sizing: border-box;
             transition: background 0.4s ease;
         }
@@ -180,9 +225,8 @@
         .config-option-row { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; cursor: pointer; font-size: 13px; color: var(--text-main); }
         .config-option-row input { width: 14px; height: 14px; accent-color: var(--apple-blue); margin: 0; }
 
-        /* 🔥 移动端专属媒体查询（彻底不影响PC） */
         @media (max-width: 600px) {
-            body { align-items: flex-start; } /* 手机端靠上显示，避开键盘遮挡 */
+            body { align-items: flex-start; } 
             .container { padding: 25px 20px; margin-top: 3vh; }
             textarea, input[type="text"], select { font-size: 16px !important; }
             #custom-backend, #custom-shortener, #custom-config { font-size: 16px !important; }
@@ -193,12 +237,29 @@
             h2 { font-size: 22px; margin-bottom: 20px; }
             .primary-btn { width: 100%; }
         }
+
+        #img-modal-overlay {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0, 0, 0, 0.9); z-index: 10001;
+            display: flex; flex-direction: column; justify-content: center; align-items: center;
+            opacity: 0; visibility: hidden; transition: all 0.3s ease;
+        }
+        #img-modal-overlay.show { opacity: 1; visibility: visible; }
+        #modal-img-result { max-width: 85%; max-height: 70vh; border-radius: 12px; box-shadow: 0 10px 30px rgba(0,0,0,0.5); }
+        .modal-tips { color: #fff; font-size: 16px; font-weight: bold; margin-bottom: 20px; }
+        .modal-close-btn { margin-top: 25px; padding: 10px 40px; border-radius: 20px; border: 1px solid rgba(255,255,255,0.3); background: transparent; color: white; font-size: 16px; font-weight: bold; cursor: pointer; }
     </style>
 </head>
 <body>
 
     <button id="theme-toggle" class="theme-toggle-btn" onclick="toggleTheme()" title="切换主题">🌙</button>
     <div id="toast" class="toast"></div>
+
+    <div id="img-modal-overlay">
+        <div class="modal-tips">👉 请长按下方图片保存或发给朋友</div>
+        <img id="modal-img-result" src="" alt="海报渲染结果">
+        <button class="modal-close-btn" onclick="closeImgModal()">关闭</button>
+    </div>
 
     <div class="container">
         <img src="Zoo_Logo.jpg" alt="Logo" class="brand-logo">
@@ -271,16 +332,16 @@
                     <div class="grid-col">
                         <label class="label-text" for="sub-shortener">短链服务</label>
                         <select id="sub-shortener">
-                            <option value="https://v1.mk/short">v1.mk</option>
+                            <option value="tinyurl">TinyURL (国际代理/极致稳定)</option>
+                            <option value="isgd">is.gd (国际代理/无墙推荐)</option>
+                            <option value="https://v1.mk/short">v1.mk (可能报异常)</option>
                             <option value="https://d1.mk/short">d1.mk</option>
-							<option value="https://dlj.tf/short">dlj.tf</option>
+                            <option value="https://dlj.tf/short">dlj.tf</option>
                             <option value="https://suo.yt/short">suo.yt</option>
-							<option value="isgd">is.gd (国际代理/无墙推荐)</option>
-							<option value="tinyurl">TinyURL (国际代理/极致稳定)</option>
                             <option value="none">不使用(仅长链直连)</option>
                             <option value="custom">自定义短链...</option>
                         </select>
-                        <input type="text" id="custom-shortener" class="hidden" placeholder="输入自定义短链 API (以 = 结尾)">
+                        <input type="text" id="custom-shortener" class="hidden" placeholder="输入自定义短链 API (如 https://v1.mk/short)">
                     </div>
                 </div>
                 <div class="grid-row">
@@ -326,7 +387,7 @@
                 </div>
             </div>
 
-            <button class="btn primary-btn" id="sub-gen-btn" onclick="generateSub()" style="margin-top:10px;">🚀一键生成</button>
+            <button class="btn primary-btn" id="sub-gen-btn" onclick="generateSub()">🚀一键生成</button>
             
             <div id="sub-output-wrapper" style="display:none; margin-top:24px;">
                 <div id="sub-promo" class="promo-text">👇👇👇<br>🌎ZooDirector_<br>👍专注跨境出海网络</div>
@@ -405,6 +466,13 @@
                 el('qr-error').classList.add('hidden');
                 return;
             }
+            
+            // 安全判定：防止脚本还没加载完就触发导致的报错卡死
+            if (typeof QRCode === 'undefined') {
+                showToast("⏳ 资源正在加载中，请稍后再试...");
+                return;
+            }
+            
             el('qrcode').innerHTML = "";
             try {
                 let textLen = rawText.length;
@@ -414,7 +482,6 @@
                 else if (textLen < 350) ecLevel = QRCode.CorrectLevel.M;
                 else ecLevel = QRCode.CorrectLevel.L;
 
-                // 核心修复：侦测设备宽度。如果是PC(>600)，生成霸气大尺寸二维码；如果是手机，自动缩小适配屏幕
                 let qrSize = window.innerWidth > 600 ? 380 : 260;
                 new QRCode(el('qrcode'), { text: rawText, width: qrSize, height: qrSize, correctLevel: ecLevel });
                 
@@ -545,22 +612,59 @@
             showToast("✨ 订阅地址已复制");
         }
 
+        function closeImgModal() {
+            const modal = el('img-modal-overlay');
+            modal.classList.remove('show');
+        }
+
         function copyPoster() {
+            if (typeof html2canvas === 'undefined') {
+                showToast("⏳ 渲染引擎正在加载中，请稍候...");
+                return;
+            }
+            
             const btn = el('copy-poster-btn');
             const poster = el('qr-poster');
-            btn.innerText = "正在渲染海报...";
-            html2canvas(poster, { scale: 3, backgroundColor: document.documentElement.getAttribute('data-theme') === 'dark' ? '#1c1c1e' : '#ffffff' }).then(canvas => {
+            btn.innerText = "⏳ 正在渲染海报...";
+            
+            html2canvas(poster, { 
+                scale: window.devicePixelRatio > 1 ? 2 : 3, 
+                useCORS: true, 
+                backgroundColor: document.documentElement.getAttribute('data-theme') === 'dark' ? '#1c1c1e' : '#ffffff' 
+            }).then(canvas => {
+                const isWechat = /MicroMessenger/i.test(navigator.userAgent);
+                
+                if (isWechat || !navigator.clipboard || !window.ClipboardItem) {
+                    el('modal-img-result').src = canvas.toDataURL("image/png");
+                    el('img-modal-overlay').classList.add('show');
+                    btn.innerText = "📸 复制图片到剪贴板";
+                    return;
+                }
+
                 canvas.toBlob(blob => {
-                    const item = new ClipboardItem({ "image/png": blob });
-                    navigator.clipboard.write([item]).then(() => {
-                        poster.classList.remove('flash-update');
-                        void poster.offsetWidth; 
-                        poster.classList.add('flash-update');
-                        poster.classList.add('success-flash-blink');
-                        showToast("✨ 图片已成功复制");
+                    try {
+                        const item = new ClipboardItem({ "image/png": blob });
+                        navigator.clipboard.write([item]).then(() => {
+                            poster.classList.remove('flash-update');
+                            void poster.offsetWidth; 
+                            poster.classList.add('flash-update');
+                            poster.classList.add('success-flash-blink');
+                            showToast("✨ 图片已成功复制");
+                            btn.innerText = "📸 复制图片到剪贴板";
+                        }).catch(err => {
+                            el('modal-img-result').src = canvas.toDataURL("image/png");
+                            el('img-modal-overlay').classList.add('show');
+                            btn.innerText = "📸 复制图片到剪贴板";
+                        });
+                    } catch (e) {
+                        el('modal-img-result').src = canvas.toDataURL("image/png");
+                        el('img-modal-overlay').classList.add('show');
                         btn.innerText = "📸 复制图片到剪贴板";
-                    });
+                    }
                 });
+            }).catch(err => {
+                showToast("❌ 渲染失败");
+                btn.innerText = "📸 复制图片到剪贴板";
             });
         }
     </script>
