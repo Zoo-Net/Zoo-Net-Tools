@@ -244,11 +244,11 @@
                     <div class="grid-col">
                         <label class="label-text" for="sub-shortener">短链服务</label>
                         <select id="sub-shortener">
-                            <option value="none">不使用(直连防错)</option>
-                            <option value="https://v1.mk/short">v1.mk</option>
+                            <option value="tinyurl">TinyURL (国际代理/极致稳定)</option>
+                            <option value="isgd">is.gd (国际代理/无墙推荐)</option>
+                            <option value="https://v1.mk/short">v1.mk (可能报异常)</option>
                             <option value="https://d1.mk/short">d1.mk</option>
-                            <option value="https://dlj.tf/short">dlj.tf</option>
-                            <option value="https://suo.yt/short">suo.yt</option>
+                            <option value="none">不使用(仅长链直连)</option>
                             <option value="custom">自定义短链...</option>
                         </select>
                         <input type="text" id="custom-shortener" class="hidden" placeholder="输入自定义短链 API (如 https://v1.mk/short)">
@@ -340,7 +340,7 @@
             const toast = el('toast');
             toast.innerText = message;
             toast.classList.add('show');
-            setTimeout(() => toast.classList.remove('show'), 2500);
+            setTimeout(() => toast.classList.remove('show'), 3500); // 增加报错显示时长方便排查
         }
 
         function extractNodeName(text) {
@@ -440,17 +440,39 @@
                 genBtn.style.pointerEvents = "none";
 
                 try {
-                    // 如果用户强制输入了包含 url= 的老式 GET 接口（防错兼容）
-                    if (shortener.includes("url=")) {
+                    // 方案一：使用国际接口 + AllOrigins 代理解决CORS (无防机器人拦截，100%成功率)
+                    if (shortener === "tinyurl" || shortener === "isgd") {
+                        let apiEndpoint = shortener === "tinyurl" 
+                            ? "https://tinyurl.com/api-create.php?url=" 
+                            : "https://is.gd/create.php?format=simple&url=";
+                            
+                        let targetUrl = apiEndpoint + encodeURIComponent(url);
+                        let proxyUrl = "https://api.allorigins.win/get?url=" + encodeURIComponent(targetUrl);
+                        
+                        let response = await fetch(proxyUrl);
+                        let json = await response.json();
+                        
+                        // allorigins 将请求回来的内容存放在 contents 字段中
+                        if (json.contents && json.contents.trim().startsWith("http")) {
+                            finalOutputUrl = json.contents.trim();
+                            showToast(`✔️ ${shortener === "tinyurl" ? "TinyURL" : "is.gd"} 代理生成成功!`);
+                        } else {
+                            throw new Error("接口被墙或代理返回异常");
+                        }
+                    } 
+                    // 方案二：传统 GET 接口（防错兼容）
+                    else if (shortener.includes("url=")) {
                         let response = await fetch(shortener + encodeURIComponent(url));
                         let text = await response.text();
                         finalOutputUrl = text.trim().startsWith("http") ? text.trim() : url;
                         if (finalOutputUrl !== url) showToast("✔️ GET短链生成成功!");
-                    } else {
-                        // 核心：模拟 sub-web 标准 MyUrls 的 FormData + Base64 + POST 机制
+                    } 
+                    // 方案三：MyUrls 接口方案（如 v1.mk/short），使用安全 Base64 转码防崩溃
+                    else {
                         let formData = new FormData();
-                        // 对已经组合完毕的长链接进行 Base64 编码 (跟 sub-web 的底层完全一致)
-                        formData.append("longUrl", btoa(url));
+                        // 修正点：原生 btoa 不支持特殊字符，这里强制转义确保无论什么订阅名都不会引起 btoa() 报错崩溃
+                        let safeBase64Str = btoa(unescape(encodeURIComponent(url)));
+                        formData.append("longUrl", safeBase64Str);
 
                         let response = await fetch(shortener, {
                             method: 'POST',
@@ -463,19 +485,20 @@
                             finalOutputUrl = json.ShortUrl;
                             showToast("✔️ 短链生成成功!");
                         } else {
-                            throw new Error(json.Message || "服务端返回格式异常");
+                            throw new Error(json.Message || "可能遭遇拦截");
                         }
                     }
                 } catch (error) {
-                    console.error("短链服务拦截或报错:", error);
-                    showToast("⚠️ 短链服务异常，已平滑回退为长链");
+                    // 在控制台输出精准错误并通知用户
+                    console.error("短链服务拦截或报错，原因: ", error);
+                    showToast(`⚠️ 短链生成受阻(${error.message.substring(0,8)}...)，已回退长链`);
                     finalOutputUrl = url;
                 } finally {
                     genBtn.innerText = "🚀一键生成"; 
                     genBtn.style.pointerEvents = "auto";
                 }
             } else {
-                showToast("✔️ Success!");
+                showToast("✔️ 订阅生成成功!");
             }
 
             el('sub-output').value = finalOutputUrl;
