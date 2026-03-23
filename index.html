@@ -14,9 +14,14 @@
                 
                 let isLoaded = false;
                 
-                // 设置2秒超时竞速。如果主CDN被墙导致挂起（不报错但无响应），2秒后自动并行注入备用国际CDN
+                // 设置2秒超时竞速 
                 let timeoutId = setTimeout(() => {
                     if (!isLoaded) {
+                        isLoaded = true; // 锁定状态，防止主节点后续意外加载完毕再次污染 
+                        script.onload = null; // 移除回调 
+                        script.onerror = null;
+                        try { document.head.removeChild(script); } catch(e) {} // 尝试移除挂起的主节点 
+
                         console.warn(`[CDN智能路由] ${name} 加载超时，正在无缝切换备用国际节点...`);
                         let fallbackScript = document.createElement('script');
                         fallbackScript.src = fallbackUrl;
@@ -25,11 +30,20 @@
                     }
                 }, 2000);
 
-                script.onload = () => { isLoaded = true; clearTimeout(timeoutId); };
+                script.onload = () => {
+                    if (!isLoaded) {
+                        isLoaded = true;
+                        clearTimeout(timeoutId);
+                    }
+                };
+                
                 script.onerror = () => {
                     if (!isLoaded) {
-                        isLoaded = true; 
+                        isLoaded = true;
                         clearTimeout(timeoutId);
+                        script.onload = null;
+                        try { document.head.removeChild(script); } catch(e) {}
+
                         console.warn(`[CDN智能路由] ${name} 访问拒绝，立刻切换备用国际节点...`);
                         let fallbackScript = document.createElement('script');
                         fallbackScript.src = fallbackUrl;
@@ -51,11 +65,6 @@
                 'https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js'
             );
         })();
-    </script>
-    
-    <script>
-        const savedTheme = localStorage.getItem('theme') || (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
-        document.documentElement.setAttribute('data-theme', savedTheme);
     </script>
 
     <style>
@@ -147,6 +156,7 @@
             max-width: 600px; box-sizing: border-box; border: 1px solid var(--border-color);
             animation: windowShow 0.6s cubic-bezier(0.23, 1, 0.32, 1);
             transform: translateZ(0); transition: background-color 0.4s ease, border-color 0.4s ease;
+            will-change: transform, opacity; /* GPU加速优化 */
         }
 
         .brand-logo { width: 88px; height: 88px; object-fit: cover; border-radius: 20px; margin: 0 auto 20px auto; display: block; box-shadow: 0 8px 16px rgba(0, 0, 0, 0.1); transition: all 0.4s ease; }
@@ -174,6 +184,9 @@
             background-size: 16px;
             padding-right: 36px;
         }
+
+        .text-input-qr { min-height: 140px; }
+        .text-input-sub { min-height: 100px; }
 
         #custom-backend, #custom-shortener, #custom-config { font-size: 11.6px; }
 
@@ -206,7 +219,7 @@
         .hidden { display: none !important; }
         .label-text { display: block; font-size: 13px; color: var(--text-sub); margin-bottom: 6px; font-weight: 600; text-align: left; padding-left: 2px; }
 
-        #qr-poster { background: rgba(52, 199, 89, 0.08); border: 1px solid rgba(52, 199, 89, 0.2); padding: 25px 20px 15px 20px; border-radius: var(--radius-card); display: none; margin: 10px auto 0 auto; width: 100%; max-width: 440px; box-sizing: border-box; position: relative; transform: translateZ(0); }
+        #qr-poster { background: rgba(52, 199, 89, 0.08); border: 1px solid rgba(52, 199, 89, 0.2); padding: 25px 20px 15px 20px; border-radius: var(--radius-card); display: none; margin: 10px auto 0 auto; width: 100%; max-width: 440px; box-sizing: border-box; position: relative; transform: translateZ(0); will-change: transform, opacity; /* GPU加速优化 */ }
         
         .qr-wrapper { position: relative; display: inline-flex; justify-content: center; align-items: center; width: 100%; box-sizing: border-box; }
         #qrcode { display: flex; justify-content: center; align-items: center; padding: 10px; background: white; margin-bottom: 5px; border-radius: 16px; box-shadow: 0 4px 11.6px rgba(0,0,0,0.05); max-width: 100%; box-sizing: border-box; }
@@ -217,9 +230,10 @@
         .tips-text { width: 100%; max-width: 320px; box-sizing: border-box; margin: 6px auto 0 auto; font-size: 13px; color: var(--tips-text); line-height: 1.6; background: var(--bg-input); border: 1px solid var(--border-color); padding: 11.6px; border-radius: 16px; transition: all 0.4s ease; word-break: break-all; }
         .footer-brand { text-align: center; font-size: 11.6px; color: #d2d2d7; margin-top: 11.6px; font-weight: 800; letter-spacing: 0.12em; text-transform: uppercase; }
 
-        #copy-poster-btn { background: var(--apple-blue-gradient); color: white; padding: 14px 44px; font-size: 16px; margin-top: 20px; width: 100%; box-sizing: border-box; }
+        #copy-poster-btn { background: var(--apple-blue-gradient); color: white; padding: 14px 44px; font-size: 16px; margin-top: 20px; display: inline-block; min-width: 220px; box-sizing: border-box; }
         #qr-error { text-align: center; margin: 10px 0; color: #ff3b30; font-weight: 700; font-size: 15px; }
         .promo-text { text-align: center; margin-bottom: 15px; font-weight: 700; color: var(--text-main); line-height: 1.6; }
+        .promo-text-qr { margin-top: -5px; margin-bottom: 0; }
 
         .config-inline-panel { background: var(--inline-config-bg); border-radius: 11.6px; padding: 11.6px; margin-bottom: 16px; display: none; text-align: left; }
         .config-option-row { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; cursor: pointer; font-size: 13px; color: var(--text-main); }
@@ -252,27 +266,27 @@
 </head>
 <body>
 
-    <button id="theme-toggle" class="theme-toggle-btn" onclick="toggleTheme()" title="切换主题">🌙</button>
+    <button id="theme-toggle" class="theme-toggle-btn" title="切换主题">🌙</button>
     <div id="toast" class="toast"></div>
 
     <div id="img-modal-overlay">
         <div class="modal-tips">👉 请长按下方图片保存或发给朋友</div>
         <img id="modal-img-result" src="" alt="海报渲染结果">
-        <button class="modal-close-btn" onclick="closeImgModal()">关闭</button>
+        <button class="modal-close-btn">关闭</button>
     </div>
 
     <div class="container">
-        <img src="Zoo_Logo.jpg" alt="Logo" class="brand-logo">
+        <img src="Zoo_Logo.jpg" alt="Zoo-Net Tools Logo" class="brand-logo">
         <h2>Zoo-Net Tools</h2>
 
         <div class="tab-container">
-            <button class="tab-btn active" id="tab-qr" onclick="switchTab('qr')">二维码生成</button>
-            <button class="tab-btn" id="tab-sub" onclick="switchTab('sub')">订阅转换</button>
+            <button class="tab-btn active" id="tab-qr">二维码生成</button>
+            <button class="tab-btn" id="tab-sub">订阅转换</button>
         </div>
 
         <div id="section-qr">
             <label class="label-text" for="text-input">节点链接</label>
-            <textarea id="text-input" placeholder="请输入节点链接，支持多链接合并生成..." style="min-height: 140px;"></textarea>
+            <textarea id="text-input" class="text-input-qr" placeholder="请输入节点链接，支持多链接合并生成..."></textarea>
             
             <div id="qr-error" class="hidden">🔞哒咩!你太长了!我受不了!<br>变短点再来!要不你去隔壁试试?<br>（文本过长或包含非法字符，核对精简后重试，批量内容请使用订阅转换）</div>
 
@@ -281,16 +295,16 @@
                     <div id="qrcode"></div>
                     <div id="embedded-info" class="hidden"></div>
                 </div>
-                <div class="promo-text" style="margin-top: -5px; margin-bottom: 0;">👇👇👇<br>🌎ZooDirector_<br>👍专注跨境出海网络</div>
+                <div class="promo-text promo-text-qr">👇👇👇<br>🌎ZooDirector_<br>👍专注跨境出海网络</div>
                 <div id="node-tips" class="tips-text hidden"></div>
                 <div class="footer-brand">BY: ZOONET</div>
             </div>
-            <button id="copy-poster-btn" class="btn hidden" onclick="copyPoster()">📸 复制图片到剪贴板</button>
+            <button id="copy-poster-btn" class="btn hidden">📸 复制图片到剪贴板</button>
         </div>
 
         <div id="section-sub" class="hidden">
             <label class="label-text" for="sub-links">订阅链接</label>
-            <textarea id="sub-links" placeholder="请输入订阅链接，支持多行输入..." style="min-height: 100px;"></textarea>
+            <textarea id="sub-links" class="text-input-sub" placeholder="请输入订阅链接，支持多行输入..."></textarea>
             
             <div class="grid-row">
                 <div class="grid-col">
@@ -314,7 +328,7 @@
                 </div>
             </div>
 
-            <div class="advanced-toggle" onclick="toggleAdvanced()">⚙️ 高级设置 (新手保持默认) 🔽</div>
+            <div class="advanced-toggle">⚙️ 高级设置 (新手保持默认) 🔽</div>
             <div id="advanced-settings" class="advanced-content">
                 <div class="grid-row">
                     <div class="grid-col">
@@ -366,7 +380,7 @@
                     </div>
                     <div class="grid-col">
                         <label class="label-text">其他配置</label>
-                        <button type="button" class="btn" style="width:100%; height:48px; background:var(--bg-input); border:1px solid var(--border-color); border-radius:var(--radius-btn); color:var(--text-main); font-size:14px; text-align:left; padding:0 16px;" onclick="toggleInlineConfig()">参数微调</button>
+                        <button type="button" class="btn" style="width:100%; height:48px; background:var(--bg-input); border:1px solid var(--border-color); border-radius:var(--radius-btn); color:var(--text-main); font-size:14px; text-align:left; padding:0 16px;" id="btn-inline-config">参数微调</button>
                         <div id="inline-config-panel" class="config-inline-panel">
                             <div style="display: flex; gap: 20px;">
                                 <div style="flex:1;">
@@ -387,22 +401,93 @@
                 </div>
             </div>
 
-            <button class="btn primary-btn" id="sub-gen-btn" onclick="generateSub()">🚀一键生成</button>
+            <button class="btn primary-btn" id="sub-gen-btn">🚀一键生成</button>
             
             <div id="sub-output-wrapper" style="display:none; margin-top:24px;">
                 <div id="sub-promo" class="promo-text">👇👇👇<br>🌎ZooDirector_<br>👍专注跨境出海网络</div>
                 <div id="sub-result">
                     <span id="res-title" style="font-size:13px; color:var(--apple-green); font-weight:700;">✨ 链接已成功生成：</span>
                     <input type="text" id="sub-output" readonly style="margin-top:10px; background:var(--bg-input);">
-                    <button class="btn copy-btn" onclick="copySubText()">复制订阅地址</button>
+                    <button class="btn copy-btn">复制订阅地址</button>
                 </div>
             </div>
         </div>
     </div>
 
     <script>
+    document.addEventListener('DOMContentLoaded', () => {
+        // --- 1. 初始化与暗黑模式记忆 ---
         const el = id => document.getElementById(id);
         const UI_CONFIG = { originalTipsHTML: `<strong style="color:var(--text-main);">⚡TIPS（注意事项）:</strong><br>本人所提供节点命名格式为<br>（国家-用户名-暂停日期）<br>仅用作备注标识，可自行更改` };
+
+        // 读取本地存储的主题偏好
+        const savedTheme = localStorage.getItem('theme');
+        if (savedTheme) {
+            document.documentElement.setAttribute('data-theme', savedTheme);
+            el('theme-toggle').innerText = savedTheme === 'dark' ? '☀️' : '🌙';
+        }
+
+        // 读取本地缓存的二维码输入内容（增强融合）
+        const inputEl = el('text-input');
+        if (inputEl) {
+            const cache = localStorage.getItem('qr_cache');
+            if (cache && !inputEl.value) {
+                inputEl.value = cache;
+                // 等待依赖加载完成后自动渲染缓存的二维码
+                setTimeout(generateQR, 800);
+            }
+        }
+
+        // --- 2. 事件绑定区 ---
+        el('theme-toggle')?.addEventListener('click', toggleTheme);
+        el('tab-qr')?.addEventListener('click', () => switchTab('qr'));
+        el('tab-sub')?.addEventListener('click', () => switchTab('sub'));
+        document.querySelector('.advanced-toggle')?.addEventListener('click', toggleAdvanced);
+        el('btn-inline-config')?.addEventListener('click', toggleInlineConfig);
+        el('sub-gen-btn')?.addEventListener('click', generateSub);
+        document.querySelector('.copy-btn')?.addEventListener('click', copySubText);
+        el('copy-poster-btn')?.addEventListener('click', copyPoster);
+        document.querySelector('.modal-close-btn')?.addEventListener('click', closeImgModal);
+        
+        // 监听下拉框变化，控制自定义选项显示
+        ['backend', 'shortener', 'config'].forEach(type => {
+            el(`sub-${type}`)?.addEventListener('change', (e) => {
+                el(`custom-${type}`).classList.toggle('hidden', e.target.value !== 'custom');
+            });
+        });
+
+        // 二维码输入防抖 (使用 requestAnimationFrame 优化重绘) 并加入缓存机制
+        let qrTimeout; 
+        let qrAnimationFrame; 
+        el('text-input')?.addEventListener('input', () => { 
+            localStorage.setItem('qr_cache', el('text-input').value); // 输入缓存
+            clearTimeout(qrTimeout); 
+            cancelAnimationFrame(qrAnimationFrame); 
+            qrTimeout = setTimeout(() => { 
+                qrAnimationFrame = requestAnimationFrame(() => generateQR()); 
+            }, 300); 
+        });
+
+        // 窗口尺寸自适应 (增强融合)
+        let resizeTimer;
+        window.addEventListener('resize', () => {
+            clearTimeout(resizeTimer);
+            resizeTimer = setTimeout(() => {
+                if (el('text-input')?.value.trim()) {
+                    generateQR();
+                }
+            }, 300);
+        });
+
+        // --- 3. 核心功能函数 ---
+        let toastTimer;
+        function showToast(message) {
+            const toast = el('toast');
+            toast.innerText = message;
+            toast.classList.add('show');
+            clearTimeout(toastTimer);
+            toastTimer = setTimeout(() => toast.classList.remove('show'), 3500); 
+        }
 
         function toggleTheme() {
             const currentTheme = document.documentElement.getAttribute('data-theme');
@@ -429,13 +514,6 @@
             panel.style.display = (panel.style.display === 'block' ? 'none' : 'block');
         }
 
-        function showToast(message) {
-            const toast = el('toast');
-            toast.innerText = message;
-            toast.classList.add('show');
-            setTimeout(() => toast.classList.remove('show'), 3500); 
-        }
-
         function extractNodeName(text) {
             if (!text) return "";
             text = text.trim();
@@ -448,16 +526,6 @@
             return "";
         }
 
-        el('sub-backend').addEventListener('change', e => el('custom-backend').classList.toggle('hidden', e.target.value !== 'custom'));
-        el('sub-shortener').addEventListener('change', e => el('custom-shortener').classList.toggle('hidden', e.target.value !== 'custom'));
-        el('sub-config').addEventListener('change', e => el('custom-config').classList.toggle('hidden', e.target.value !== 'custom'));
-
-        let qrTimeout;
-        el('text-input').addEventListener('input', () => {
-            clearTimeout(qrTimeout);
-            qrTimeout = setTimeout(() => generateQR(), 300);
-        });
-
         function generateQR() {
             const rawText = el('text-input').value.trim();
             if(!rawText) {
@@ -467,7 +535,6 @@
                 return;
             }
             
-            // 安全判定：防止脚本还没加载完就触发导致的报错卡死
             if (typeof QRCode === 'undefined') {
                 showToast("⏳ 资源正在加载中，请稍后再试...");
                 return;
@@ -512,28 +579,46 @@
             let rawLinks = el('sub-links').value.trim();
             if(!rawLinks) return showToast("❌ 请输入链接");
 
-            let processedLinks = rawLinks.split('\n');
-            let defaultName = extractNodeName(processedLinks[0]) || "ZooNet_Sub";
+            // 统一处理多行链接，用 | 隔开
+            let processedLinks = rawLinks.split('\n').join('|');
+            let defaultName = extractNodeName(rawLinks.split('\n')[0]) || "ZooNet_Sub";
             let filename = el('sub-filename').value.trim() || defaultName;
 
             let backend = el('sub-backend').value === 'custom' ? el('custom-backend').value : el('sub-backend').value;
-            let target = el('sub-target').value;
-            let links = encodeURIComponent(processedLinks.join('|'));
+            let configUrl = el('sub-config').value === 'custom' ? el('custom-config').value : el('sub-config').value;
             
-            if (links.includes('tuic')) {
-                links = links.replaceAll('%3A', ':');
+            const params = new URLSearchParams({
+                target: el('sub-target').value,
+                url: processedLinks,
+                filename: filename,
+                emoji: el('chk-emoji').checked,
+                udp: el('chk-udp').checked,
+                scv: el('chk-scv').checked,
+                append_type: el('chk-append-type').checked,
+                sort: el('chk-sort').checked,
+                expand: el('chk-expand').checked,
+                new_name: 'true',
+                flag: 'clash meta',
+                dev: 'true'
+            });
+
+            if (configUrl) {
+                params.append('config', configUrl);
+            }
+
+            // 安全拼接 URL 参数 (修复潜在BUG)
+            let url;
+            if (backend.includes('?')) {
+                url = backend.endsWith('?') ? backend + params.toString() : backend + '&' + params.toString();
+            } else {
+                url = backend + '?' + params.toString();
+            }
+            
+            if (url.includes('tuic')) {
+                url = url.replace(/%253A/g, ':').replace(/%3A/g, ':');
             }
 
             let shortener = el('sub-shortener').value === 'custom' ? el('custom-shortener').value : el('sub-shortener').value;
-            let configUrl = el('sub-config').value === 'custom' ? el('custom-config').value : el('sub-config').value;
-            const config = configUrl ? "&config=" + encodeURIComponent(configUrl) : "";
-            
-            let url = `${backend}target=${target}&url=${links}${config}&filename=${encodeURIComponent(filename)}&emoji=${el('chk-emoji').checked}&udp=${el('chk-udp').checked}&scv=${el('chk-scv').checked}&append_type=${el('chk-append-type').checked}&sort=${el('chk-sort').checked}&expand=${el('chk-expand').checked}&new_name=true&flag=clash%20meta&dev=true`;
-            
-            if (url.includes('tuic')) {
-                url = url.replaceAll('%253A', ':').replaceAll('%3A', ':');
-            }
-
             let finalOutputUrl = url; 
             const genBtn = el('sub-gen-btn');
 
@@ -542,52 +627,51 @@
                 genBtn.style.pointerEvents = "none";
 
                 try {
+                    const controller = new AbortController();
+                    const timeoutId = setTimeout(() => controller.abort(), 5000);
+                    const fetchOptions = { signal: controller.signal };
+
                     if (shortener === "tinyurl" || shortener === "isgd") {
                         let apiEndpoint = shortener === "tinyurl" 
                             ? "https://tinyurl.com/api-create.php?url=" 
                             : "https://is.gd/create.php?format=simple&url=";
-                            
-                        let targetUrl = apiEndpoint + encodeURIComponent(url);
-                        let proxyUrl = "https://api.allorigins.win/get?url=" + encodeURIComponent(targetUrl);
+                        let proxyUrl = "https://api.allorigins.win/get?url=" + encodeURIComponent(apiEndpoint + encodeURIComponent(url));
                         
-                        let response = await fetch(proxyUrl);
+                        let response = await fetch(proxyUrl, fetchOptions);
                         let json = await response.json();
+                        clearTimeout(timeoutId);
                         
                         if (json.contents && json.contents.trim().startsWith("http")) {
                             finalOutputUrl = json.contents.trim();
                             showToast(`✔️ ${shortener === "tinyurl" ? "TinyURL" : "is.gd"} 代理生成成功!`);
-                        } else {
-                            throw new Error("接口被墙或代理返回异常");
-                        }
+                        } else throw new Error("接口被墙或代理返回异常");
                     } 
                     else if (shortener.includes("url=")) {
-                        let response = await fetch(shortener + encodeURIComponent(url));
+                        let response = await fetch(shortener + encodeURIComponent(url), fetchOptions);
                         let text = await response.text();
+                        clearTimeout(timeoutId);
                         finalOutputUrl = text.trim().startsWith("http") ? text.trim() : url;
                         if (finalOutputUrl !== url) showToast("✔️ GET短链生成成功!");
                     } 
                     else {
                         let formData = new FormData();
-                        let safeBase64Str = btoa(unescape(encodeURIComponent(url)));
-                        formData.append("longUrl", safeBase64Str);
+                        formData.append("longUrl", btoa(unescape(encodeURIComponent(url))));
+                        fetchOptions.method = 'POST';
+                        fetchOptions.body = formData;
 
-                        let response = await fetch(shortener, {
-                            method: 'POST',
-                            body: formData
-                        });
-                        
+                        let response = await fetch(shortener, fetchOptions);
                         let json = await response.json();
+                        clearTimeout(timeoutId);
                         
                         if (json.Code === 1 && json.ShortUrl) {
                             finalOutputUrl = json.ShortUrl;
                             showToast("✔️ 短链生成成功!");
-                        } else {
-                            throw new Error(json.Message || "可能遭遇拦截");
-                        }
+                        } else throw new Error(json.Message || "可能遭遇拦截");
                     }
                 } catch (error) {
-                    console.error("短链服务拦截或报错，原因: ", error);
-                    showToast(`⚠️ 短链生成受阻(${error.message.substring(0,8)}...)，已回退长链`);
+                    console.error("短链服务报错: ", error);
+                    let errMsg = error.name === 'AbortError' ? "请求超时" : error.message.substring(0,8);
+                    showToast(`⚠️ 短链受阻(${errMsg}...)，已回退长链`);
                     finalOutputUrl = url;
                 } finally {
                     genBtn.innerText = "🚀一键生成"; 
@@ -613,8 +697,7 @@
         }
 
         function closeImgModal() {
-            const modal = el('img-modal-overlay');
-            modal.classList.remove('show');
+            el('img-modal-overlay').classList.remove('show');
         }
 
         function copyPoster() {
@@ -667,6 +750,7 @@
                 btn.innerText = "📸 复制图片到剪贴板";
             });
         }
+    });
     </script>
 </body>
 </html>
