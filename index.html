@@ -4,71 +4,71 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Zoo-Net Tools</title>
-    
+
+    <link rel="preconnect" href="https://cdn.staticfile.net" crossorigin>
+    <link rel="preconnect" href="https://cdnjs.cloudflare.com" crossorigin>
+    <link rel="dns-prefetch" href="https://cdn.staticfile.net">
+
     <script>
-        (function() {
-            function loadLibrary(name, primaryUrl, fallbackUrl) {
+        function loadLibrary(name, primaryUrl, fallbackUrl) {
+            return new Promise((resolve, reject) => {
                 let script = document.createElement('script');
                 script.src = primaryUrl;
                 script.defer = true;
-                
-                let isLoaded = false;
-                
-                // 设置2秒超时竞速 
-                let timeoutId = setTimeout(() => {
-                    if (!isLoaded) {
-                        isLoaded = true; // 锁定状态，防止主节点后续意外加载完毕再次污染 
-                        script.onload = null; // 移除回调 
-                        script.onerror = null;
-                        try { document.head.removeChild(script); } catch(e) {} // 尝试移除挂起的主节点 
 
-                        console.warn(`[CDN智能路由] ${name} 加载超时，正在无缝切换备用国际节点...`);
-                        let fallbackScript = document.createElement('script');
-                        fallbackScript.src = fallbackUrl;
-                        fallbackScript.defer = true;
-                        document.head.appendChild(fallbackScript);
-                    }
+                let timeoutId = setTimeout(() => {
+                    script.onload = script.onerror = null;
+                    try { document.head.removeChild(script); } catch(e){}
+                    console.warn(`[CDN] ${name} 超时 → 切换备用`);
+                    loadFallback();
                 }, 2000);
 
                 script.onload = () => {
-                    if (!isLoaded) {
-                        isLoaded = true;
-                        clearTimeout(timeoutId);
-                    }
+                    clearTimeout(timeoutId);
+                    resolve(name);
                 };
-                
+
                 script.onerror = () => {
-                    if (!isLoaded) {
-                        isLoaded = true;
-                        clearTimeout(timeoutId);
-                        script.onload = null;
-                        try { document.head.removeChild(script); } catch(e) {}
-
-                        console.warn(`[CDN智能路由] ${name} 访问拒绝，立刻切换备用国际节点...`);
-                        let fallbackScript = document.createElement('script');
-                        fallbackScript.src = fallbackUrl;
-                        fallbackScript.defer = true;
-                        document.head.appendChild(fallbackScript);
-                    }
+                    clearTimeout(timeoutId);
+                    try { document.head.removeChild(script); } catch(e){}
+                    loadFallback();
                 };
-                
-                document.head.appendChild(script);
-            }
 
-            // 部署双节点：主节点(国内极速/国外CF) + 备用节点(纯国际顶级CDN)
-            loadLibrary('QRCode', 
-                'https://cdn.staticfile.net/qrcodejs/1.0.0/qrcode.min.js', 
-                'https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js'
-            );
-            loadLibrary('Html2Canvas', 
-                'https://cdn.staticfile.net/html2canvas/1.4.1/html2canvas.min.js', 
-                'https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js'
-            );
-        })();
+                function loadFallback() {
+                    let fb = document.createElement('script');
+                    fb.src = fallbackUrl;
+                    fb.defer = true;
+                    fb.onload = () => resolve(name);
+                    fb.onerror = () => reject(new Error(`${name} 所有节点加载失败`));
+                    document.head.appendChild(fb);
+                }
+
+                document.head.appendChild(script);
+            });
+        }
+
+        const libsPromise = Promise.all([
+            loadLibrary('QRCode', 'https://cdn.staticfile.net/qrcodejs/1.0.0/qrcode.min.js', 'https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js'),
+            loadLibrary('Html2Canvas', 'https://cdn.staticfile.net/html2canvas/1.4.1/html2canvas.min.js', 'https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js')
+        ]).then(() => {
+            window.libsReady = true;
+        }).catch(err => {
+            console.error(err);
+            alert("核心资源加载失败，请检查网络后刷新页面");
+        });
     </script>
 
     <style>
         :root {
+            --transition-base: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            --shadow-base: 0 20px 40px rgba(0, 0, 0, 0.1), 0 0 1px rgba(0, 0, 0, 0.2);
+            --shadow-focus: 0 0 0 4px rgba(0, 122, 255, 0.4);
+            --radius-card: 22px;
+            --radius-btn: 10px;
+            --apple-blue: #007aff;
+            --apple-blue-gradient: linear-gradient(135deg, #007aff 0%, #5856d6 100%);
+            --apple-green: #34c759;
+
             --bg-page: #e2e2e7;
             --bg-card: rgba(255, 255, 255, 0.85);
             --bg-input: rgba(255, 255, 255, 0.5);
@@ -76,27 +76,45 @@
             --text-main: #1d1d1f;
             --text-sub: #6e6e73;
             --border-color: rgba(0, 0, 0, 0.1);
-            --apple-blue: #007aff;
-            --apple-blue-gradient: linear-gradient(135deg, #007aff 0%, #5856d6 100%);
-            --apple-green: #34c759;
-            --radius-card: 22px;
-            --radius-btn: 10px;
-            --shadow-card: 0 20px 40px rgba(0, 0, 0, 0.1), 0 0 1px rgba(0, 0, 0, 0.2);
-            --shadow-focus: 0 0 0 4px rgba(0, 122, 255, 0.4);
-            
             --h2-grad-start: #1d1d1f;
             --h2-grad-end: #434343;
             --tips-text: #86868b;
             --inline-config-bg: rgba(0, 0, 0, 0.03);
-            
-            --tab-active-text: #ffffff; 
-
+            --tab-active-text: #ffffff;
             --qr-info-bg: rgba(255, 255, 255, 0.95);
             --qr-info-text: #000000;
             --qr-info-border: #ffffff;
 
-            --font-main: "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "WenQuanYi Micro Hei", -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-            --font-mono: "SF Mono", "Monaco", "Menlo", "Consolas", "Liberation Mono", "Courier New", monospace;
+            /* 清除按钮变量（亮色模式） */
+            --clear-btn-bg: rgba(0,0,0,0.08);
+            --clear-btn-color: #6e6e73;
+            --clear-btn-hover-bg: rgba(0,0,0,0.15);
+        }
+
+        @media (prefers-color-scheme: dark) {
+            :root:not([data-theme="light"]) {
+                --bg-page: #1c1c1e;
+                --bg-card: rgba(28, 28, 30, 0.75);
+                --bg-input: rgba(44, 44, 46, 0.8);
+                --bg-tab: rgba(118, 118, 128, 0.24);
+                --text-main: #f5f5f7;
+                --text-sub: #ebebf5;
+                --border-color: rgba(255, 255, 255, 0.15);
+                --shadow-base: 0 20px 40px rgba(0, 0, 0, 0.5), 0 0 1px rgba(255, 255, 255, 0.2);
+                --h2-grad-start: #f5f5f7;
+                --h2-grad-end: #86868b;
+                --tips-text: #a1a1a6;
+                --inline-config-bg: rgba(255, 255, 255, 0.05);
+                --tab-active-text: #1d1d1f;
+                --qr-info-bg: #000000;
+                --qr-info-text: #ffffff;
+                --qr-info-border: #000000;
+
+                /* 暗黑模式清除按钮优化：背景浅灰、× 白色 */
+                --clear-btn-bg: rgba(255,255,255,0.12);
+                --clear-btn-color: #ffffff;
+                --clear-btn-hover-bg: rgba(255,255,255,0.25);
+            }
         }
 
         [data-theme="dark"] {
@@ -107,74 +125,160 @@
             --text-main: #f5f5f7;
             --text-sub: #ebebf5;
             --border-color: rgba(255, 255, 255, 0.15);
-            --shadow-card: 0 20px 40px rgba(0, 0, 0, 0.5), 0 0 1px rgba(255, 255, 255, 0.2);
-            
+            --shadow-base: 0 20px 40px rgba(0, 0, 0, 0.5), 0 0 1px rgba(255, 255, 255, 0.2);
             --h2-grad-start: #f5f5f7;
             --h2-grad-end: #86868b;
             --tips-text: #a1a1a6;
             --inline-config-bg: rgba(255, 255, 255, 0.05);
-
-            --tab-active-text: #1d1d1f; 
-
+            --tab-active-text: #1d1d1f;
             --qr-info-bg: #000000;
             --qr-info-text: #ffffff;
             --qr-info-border: #000000;
+
+            --clear-btn-bg: rgba(255,255,255,0.12);
+            --clear-btn-color: #ffffff;
+            --clear-btn-hover-bg: rgba(255,255,255,0.25);
         }
 
-        body {
-            font-family: var(--font-main);
-            -webkit-font-smoothing: antialiased;
-            -moz-osx-font-smoothing: grayscale;
-            text-rendering: optimizeLegibility;
-            background: linear-gradient(120deg, var(--bg-page) 0%, var(--bg-page) 100%);
-            display: flex; justify-content: center; 
-            align-items: center; 
-            min-height: 100vh; margin: 0; padding: 20px; box-sizing: border-box;
-            transition: background 0.4s ease;
+        @keyframes containerPop {
+            0% { transform: scale(0.97); }
+            50% { transform: scale(1.02); }
+            100% { transform: scale(1); }
         }
 
-        .theme-toggle-btn {
-            position: fixed; top: 20px; right: 20px; width: 44px; height: 44px;
-            border-radius: 50%; border: 1px solid var(--border-color);
-            background: var(--bg-card); backdrop-filter: blur(10px);
-            color: var(--text-main); font-size: 20px; cursor: pointer;
-            z-index: 1000; display: flex; justify-content: center; align-items: center;
-            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(-10px); }
+            to { opacity: 1; transform: translateY(0); }
         }
-        .theme-toggle-btn:hover { transform: scale(1.1); }
-        .theme-toggle-btn:active { transform: scale(0.9); }
 
         @keyframes windowShow {
             from { opacity: 0; transform: scale(0.94) translateY(20px); }
             to { opacity: 1; transform: scale(1) translateY(0); }
         }
 
-        .container {
-            background-color: var(--bg-card); backdrop-filter: blur(20px);
-            padding: 40px; border-radius: var(--radius-card); 
-            box-shadow: var(--shadow-card); text-align: center; width: 100%; 
-            max-width: 600px; box-sizing: border-box; border: 1px solid var(--border-color);
-            animation: windowShow 0.6s cubic-bezier(0.23, 1, 0.32, 1);
-            transform: translateZ(0); transition: background-color 0.4s ease, border-color 0.4s ease;
-            will-change: transform, opacity; /* GPU加速优化 */
+        body {
+            font-family: "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "WenQuanYi Micro Hei", -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            -webkit-font-smoothing: antialiased;
+            background: linear-gradient(120deg, var(--bg-page) 0%, var(--bg-page) 100%);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+            padding: 20px;
+            box-sizing: border-box;
+            transition: var(--transition-base);
         }
 
-        .brand-logo { width: 88px; height: 88px; object-fit: cover; border-radius: 20px; margin: 0 auto 20px auto; display: block; box-shadow: 0 8px 16px rgba(0, 0, 0, 0.1); transition: all 0.4s ease; }
+        .theme-toggle-btn {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            width: 44px;
+            height: 44px;
+            border-radius: 50%;
+            border: 1px solid var(--border-color);
+            background: var(--bg-card);
+            backdrop-filter: blur(10px);
+            color: var(--text-main);
+            font-size: 20px;
+            cursor: pointer;
+            z-index: 1000;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            transition: var(--transition-base);
+        }
+
+        .theme-toggle-btn:hover { transform: scale(1.1); }
+
+        .container {
+            background-color: var(--bg-card);
+            backdrop-filter: blur(20px);
+            padding: 40px;
+            border-radius: var(--radius-card);
+            box-shadow: var(--shadow-base);
+            text-align: center;
+            width: 100%;
+            max-width: 600px;
+            box-sizing: border-box;
+            border: 1px solid var(--border-color);
+            animation: windowShow 0.6s cubic-bezier(0.23, 1, 0.32, 1);
+            transition: var(--transition-base);
+        }
+
+        .brand-logo {
+            width: 88px;
+            height: 88px;
+            object-fit: cover;
+            border-radius: 20px;
+            margin: 0 auto 20px auto;
+            display: block;
+            box-shadow: 0 8px 16px rgba(0, 0, 0, 0.1);
+            transition: var(--transition-base);
+        }
+
         .brand-logo:hover { transform: scale(1.1) rotate(3deg); }
 
-        h2 { margin: 0 0 28px 0; font-size: 26px; font-weight: 700; background: linear-gradient(135deg, var(--h2-grad-start) 0%, var(--h2-grad-end) 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
-
-        .tab-container { display: flex; background-color: var(--bg-tab); border-radius: 11.6px; padding: 3px; margin-bottom: 28px; }
-        .tab-btn { flex: 1; padding: 8px 0; border: none; background: transparent; border-radius: 9px; font-size: 14px; font-weight: 600; color: var(--text-main); cursor: pointer; transition: all 0.2s ease; }
-        .tab-btn.active { background-color: var(--apple-blue); color: var(--tab-active-text); box-shadow: 0 3px 8px rgba(0, 122, 255, 0.3); }
-
-        textarea, input[type="text"], select { 
-            width: 100%; box-sizing: border-box; padding: 14px 16px; margin-bottom: 16px; 
-            border: 1px solid var(--border-color); border-radius: var(--radius-btn); 
-            font-size: 14px; font-family: var(--font-mono); outline: none; 
-            background-color: var(--bg-input); transition: all 0.25s ease; color: var(--text-main); 
+        h2 {
+            margin: 0 0 28px 0;
+            font-size: 26px;
+            font-weight: 700;
+            background: linear-gradient(135deg, var(--h2-grad-start) 0%, var(--h2-grad-end) 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
         }
-        
+
+        .tab-container {
+            display: flex;
+            background-color: var(--bg-tab);
+            border-radius: 11.6px;
+            padding: 3px;
+            margin-bottom: 28px;
+        }
+
+        .tab-btn {
+            flex: 1;
+            padding: 8px 0;
+            border: none;
+            background: transparent;
+            border-radius: 9px;
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--text-main);
+            cursor: pointer;
+            transition: var(--transition-base);
+        }
+
+        .tab-btn.active {
+            background-color: var(--apple-blue);
+            color: var(--tab-active-text);
+            box-shadow: 0 3px 8px rgba(0, 122, 255, 0.3);
+        }
+
+        /* 输入框容器（用于定位清除按钮） */
+        .text-input-container {
+            position: relative;
+            min-height: 140px;
+        }
+
+        textarea,
+        input[type="text"],
+        select {
+            width: 100%;
+            box-sizing: border-box;
+            padding: 14px 16px;
+            margin-bottom: 16px;
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-btn);
+            font-size: 14px;
+            font-family: "SF Mono", "Monaco", "Menlo", "Consolas", "Liberation Mono", "Courier New", monospace;
+            outline: none;
+            background-color: var(--bg-input);
+            transition: var(--transition-base);
+            color: var(--text-main);
+        }
+
         select {
             -webkit-appearance: none;
             appearance: none;
@@ -185,83 +289,361 @@
             padding-right: 36px;
         }
 
-        .text-input-qr { min-height: 140px; }
-        .text-input-sub { min-height: 100px; }
+        /* 清除按钮样式（通用，已适配暗黑模式） */
+        .clear-btn {
+            position: absolute;
+            top: 14px;
+            right: 14px;
+            width: 28px;
+            height: 28px;
+            background: var(--clear-btn-bg);
+            border: none;
+            border-radius: 50%;
+            font-size: 20px;
+            line-height: 1;
+            color: var(--clear-btn-color);
+            cursor: pointer;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            transition: var(--transition-base);
+        }
 
-        #custom-backend, #custom-shortener, #custom-config { font-size: 11.6px; }
+        .clear-btn:hover {
+            background: var(--clear-btn-hover-bg);
+            transform: scale(1.1);
+        }
 
-        textarea:focus, input[type="text"]:focus, select:focus { border-color: var(--apple-blue); box-shadow: var(--shadow-focus); }
+        /* 核心修复：纯通过 CSS 的焦点伪类和内容类来控制显示 */
+        .text-input-container:focus-within .clear-btn,
+        .text-input-container.has-content .clear-btn {
+            display: flex;
+        }
 
-        .grid-row { display: flex; gap: 14px; text-align: left; }
-        .grid-col { flex: 1; width: 100%; }
+        #custom-backend,
+        #custom-shortener,
+        #custom-config {
+            font-size: 11.6px;
+        }
 
-        .advanced-toggle { text-align: center; font-size: 13px; color: var(--apple-blue); cursor: pointer; padding: 11.6px; margin-bottom: 16px; border-radius: 10px; background: rgba(0, 122, 255, 0.08); font-weight: 600; user-select: none; }
-        .advanced-content { display: none; animation: fadeIn 0.3s ease-out forwards; }
-        @keyframes fadeIn { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } }
+        .grid-row {
+            display: flex;
+            gap: 14px;
+            text-align: left;
+        }
 
-        .btn { border: none; border-radius: var(--radius-btn); font-family: var(--font-main); font-weight: 600; cursor: pointer; transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); transform: translateZ(0); }
-        .primary-btn { background: var(--apple-blue-gradient); color: white; padding: 14px 44px; font-size: 16px; min-width: 180px; display: inline-block; box-shadow: 0 4px 11.6px rgba(0, 122, 255, 0.3); }
-        .primary-btn:hover, #copy-poster-btn:hover { transform: translateY(-2px); filter: brightness(1.1); box-shadow: 0 8px 20px rgba(0, 122, 255, 0.4); }
+        .grid-col {
+            flex: 1;
+            width: 100%;
+        }
 
-        #sub-result { padding: 18px 22px; background: rgba(52, 199, 89, 0.08); border: 1px solid rgba(52, 199, 89, 0.2); border-radius: var(--radius-btn); text-align: left; }
+        .advanced-toggle {
+            text-align: center;
+            font-size: 13px;
+            color: var(--apple-blue);
+            cursor: pointer;
+            padding: 11.6px;
+            margin-bottom: 16px;
+            border-radius: 10px;
+            background: rgba(0, 122, 255, 0.08);
+            font-weight: 600;
+            user-select: none;
+            transition: var(--transition-base);
+        }
 
-        .success-flash-blink { animation: flashPulse 0.5s ease-out; }
-        @keyframes flashPulse { 0% { filter: brightness(1); } 50% { filter: brightness(0.85); opacity: 0.8; } 100% { filter: brightness(1); opacity: 1; } }
+        .advanced-content {
+            display: none;
+            animation: fadeIn 0.3s ease-out forwards;
+        }
 
-        .flash-update { animation: containerPop 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
-        @keyframes containerPop { 0% { transform: scale(0.97); } 50% { transform: scale(1.02); } 100% { transform: scale(1); } }
+        .btn {
+            border: none;
+            border-radius: var(--radius-btn);
+            font-family: var(--font-main);
+            font-weight: 600;
+            cursor: pointer;
+            transition: var(--transition-base);
+        }
 
-        .toast { position: fixed; top: calc(env(safe-area-inset-top, 20px) + 20px); left: 50%; transform: translateX(-50%) translateY(-20px); background-color: rgba(0, 0, 0, 0.85); color: white; padding: 11.6px 24px; border-radius: 14px; font-size: 14px; font-weight: 600; z-index: 10000; opacity: 0; visibility: hidden; transition: all 0.4s ease; backdrop-filter: blur(15px); text-align: center; max-width: 90%; word-break: break-all; }
-        .toast.show { opacity: 1; visibility: visible; transform: translateX(-50%) translateY(0); }
+        .primary-btn {
+            background: var(--apple-blue-gradient);
+            color: white;
+            padding: 14px 44px;
+            font-size: 16px;
+            min-width: 180px;
+            display: inline-block;
+            box-shadow: 0 4px 11.6px rgba(0, 122, 255, 0.3);
+        }
 
-        .copy-btn { background-color: var(--apple-blue); color: #fff; padding: 11.6px 30px; border-radius: 8px; margin: 15px auto 0; display: block; width: 100%; box-sizing: border-box;}
-        
-        .hidden { display: none !important; }
-        .label-text { display: block; font-size: 13px; color: var(--text-sub); margin-bottom: 6px; font-weight: 600; text-align: left; padding-left: 2px; }
+        .primary-btn:hover {
+            transform: translateY(-2px);
+            filter: brightness(1.1);
+            box-shadow: 0 8px 20px rgba(0, 122, 255, 0.4);
+        }
 
-        #qr-poster { background: rgba(52, 199, 89, 0.08); border: 1px solid rgba(52, 199, 89, 0.2); padding: 25px 20px 15px 20px; border-radius: var(--radius-card); display: none; margin: 10px auto 0 auto; width: 100%; max-width: 440px; box-sizing: border-box; position: relative; transform: translateZ(0); will-change: transform, opacity; /* GPU加速优化 */ }
-        
-        .qr-wrapper { position: relative; display: inline-flex; justify-content: center; align-items: center; width: 100%; box-sizing: border-box; }
-        #qrcode { display: flex; justify-content: center; align-items: center; padding: 10px; background: white; margin-bottom: 5px; border-radius: 16px; box-shadow: 0 4px 11.6px rgba(0,0,0,0.05); max-width: 100%; box-sizing: border-box; }
-        #qrcode img, #qrcode canvas { max-width: 100% !important; height: auto !important; image-rendering: pixelated; border-radius: 8px; }
+        #sub-result {
+            padding: 18px 22px;
+            background: rgba(52, 199, 89, 0.08);
+            border: 1px solid rgba(52, 199, 89, 0.2);
+            border-radius: var(--radius-btn);
+            text-align: left;
+        }
 
-        #embedded-info { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); background-color: var(--qr-info-bg); color: var(--qr-info-text); font-size: 11.6px; font-weight: 800; padding: 4px 8px; border-radius: 6px; box-shadow: 0 0 0 2px var(--qr-info-border); z-index: 10; transition: all 0.4s ease; max-width: 100px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .success-flash-blink {
+            animation: flashPulse 0.5s ease-out;
+        }
 
-        .tips-text { width: 100%; max-width: 320px; box-sizing: border-box; margin: 6px auto 0 auto; font-size: 13px; color: var(--tips-text); line-height: 1.6; background: var(--bg-input); border: 1px solid var(--border-color); padding: 11.6px; border-radius: 16px; transition: all 0.4s ease; word-break: break-all; }
-        .footer-brand { text-align: center; font-size: 11.6px; color: #d2d2d7; margin-top: 11.6px; font-weight: 800; letter-spacing: 0.12em; text-transform: uppercase; }
+        .flash-update {
+            animation: containerPop 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
 
-        #copy-poster-btn { background: var(--apple-blue-gradient); color: white; padding: 14px 44px; font-size: 16px; margin-top: 20px; display: inline-block; min-width: 220px; box-sizing: border-box; }
-        #qr-error { text-align: center; margin: 10px 0; color: #ff3b30; font-weight: 700; font-size: 15px; }
-        .promo-text { text-align: center; margin-bottom: 15px; font-weight: 700; color: var(--text-main); line-height: 1.6; }
-        .promo-text-qr { margin-top: -5px; margin-bottom: 0; }
+        .toast {
+            position: fixed;
+            top: calc(env(safe-area-inset-top, 20px) + 20px);
+            left: 50%;
+            transform: translateX(-50%) translateY(-20px);
+            background-color: rgba(0, 0, 0, 0.85);
+            color: white;
+            padding: 11.6px 24px;
+            border-radius: 14px;
+            font-size: 14px;
+            font-weight: 600;
+            z-index: 10000;
+            opacity: 0;
+            visibility: hidden;
+            transition: var(--transition-base);
+            backdrop-filter: blur(15px);
+            text-align: center;
+            max-width: 90%;
+            word-break: break-all;
+        }
 
-        .config-inline-panel { background: var(--inline-config-bg); border-radius: 11.6px; padding: 11.6px; margin-bottom: 16px; display: none; text-align: left; }
-        .config-option-row { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; cursor: pointer; font-size: 13px; color: var(--text-main); }
-        .config-option-row input { width: 14px; height: 14px; accent-color: var(--apple-blue); margin: 0; }
+        .toast.show {
+            opacity: 1;
+            visibility: visible;
+            transform: translateX(-50%) translateY(0);
+        }
+
+        .copy-btn {
+            background-color: var(--apple-blue);
+            color: #fff;
+            padding: 11.6px 30px;
+            border-radius: 8px;
+            margin: 15px auto 0;
+            display: block;
+            width: 100%;
+            box-sizing: border-box;
+        }
+
+        .hidden {
+            display: none !important;
+        }
+
+        .label-text {
+            display: block;
+            font-size: 13px;
+            color: var(--text-sub);
+            margin-bottom: 6px;
+            font-weight: 600;
+            text-align: left;
+            padding-left: 2px;
+        }
+
+        #qr-poster {
+            background: rgba(52, 199, 89, 0.08);
+            border: 1px solid rgba(52, 199, 89, 0.2);
+            padding: 25px 20px 15px 20px;
+            border-radius: var(--radius-card);
+            display: none;
+            margin: 10px auto 0 auto;
+            width: 100%;
+            max-width: 440px;
+            box-sizing: border-box;
+            position: relative;
+            transition: var(--transition-base);
+        }
+
+        .qr-wrapper {
+            position: relative;
+            display: inline-flex;
+            justify-content: center;
+            align-items: center;
+            width: 100%;
+            box-sizing: border-box;
+        }
+
+        #qrcode {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 10px;
+            background: white;
+            margin-bottom: 5px;
+            border-radius: 16px;
+            box-shadow: 0 4px 11.6px rgba(0,0,0,0.05);
+            max-width: 100%;
+            box-sizing: border-box;
+        }
+
+        #embedded-info {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background-color: var(--qr-info-bg);
+            color: var(--qr-info-text);
+            font-size: 11.6px;
+            font-weight: 800;
+            padding: 4px 8px;
+            border-radius: 6px;
+            box-shadow: 0 0 0 2px var(--qr-info-border);
+            z-index: 10;
+            max-width: 100px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .tips-text {
+            width: 100%;
+            max-width: 320px;
+            box-sizing: border-box;
+            margin: 6px auto 0 auto;
+            font-size: 13px;
+            color: var(--tips-text);
+            line-height: 1.6;
+            background: var(--bg-input);
+            border: 1px solid var(--border-color);
+            padding: 11.6px;
+            border-radius: 16px;
+            transition: var(--transition-base);
+            word-break: break-all;
+        }
+
+        .footer-brand {
+            text-align: center;
+            font-size: 11.6px;
+            color: #d2d2d7;
+            margin-top: 11.6px;
+            font-weight: 800;
+            letter-spacing: 0.12em;
+            text-transform: uppercase;
+        }
+
+        #copy-poster-btn {
+            background: var(--apple-blue-gradient);
+            color: white;
+            padding: 14px 44px;
+            font-size: 16px;
+            margin-top: 20px;
+            display: inline-block;
+            min-width: 220px;
+            box-sizing: border-box;
+        }
+
+        #qr-error {
+            text-align: center;
+            margin: 10px 0;
+            color: #ff3b30;
+            font-weight: 700;
+            font-size: 15px;
+        }
+
+        .promo-text {
+            text-align: center;
+            margin-bottom: 15px;
+            font-weight: 700;
+            color: var(--text-main);
+            line-height: 1.6;
+        }
+
+        .promo-text-qr {
+            margin-top: -5px;
+            margin-bottom: 0;
+        }
+
+        .config-inline-panel {
+            background: var(--inline-config-bg);
+            border-radius: 11.6px;
+            padding: 11.6px;
+            margin-bottom: 16px;
+            display: none;
+            text-align: left;
+        }
+
+        .config-option-row {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 8px;
+            cursor: pointer;
+            font-size: 13px;
+            color: var(--text-main);
+        }
+
+        .config-option-row input {
+            width: 14px;
+            height: 14px;
+            accent-color: var(--apple-blue);
+            margin: 0;
+        }
 
         @media (max-width: 600px) {
-            body { align-items: flex-start; } 
+            body { align-items: flex-start; }
             .container { padding: 25px 20px; margin-top: 3vh; }
             textarea, input[type="text"], select { font-size: 16px !important; }
-            #custom-backend, #custom-shortener, #custom-config { font-size: 16px !important; }
-            
             .grid-row { flex-direction: column; gap: 0px; }
-            .grid-col { width: 100%; }
-            
             h2 { font-size: 22px; margin-bottom: 20px; }
             .primary-btn { width: 100%; }
         }
 
         #img-modal-overlay {
-            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(0, 0, 0, 0.9); z-index: 10001;
-            display: flex; flex-direction: column; justify-content: center; align-items: center;
-            opacity: 0; visibility: hidden; transition: all 0.3s ease;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.9);
+            z-index: 10001;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            opacity: 0;
+            visibility: hidden;
+            transition: var(--transition-base);
         }
-        #img-modal-overlay.show { opacity: 1; visibility: visible; }
-        #modal-img-result { max-width: 85%; max-height: 70vh; border-radius: 12px; box-shadow: 0 10px 30px rgba(0,0,0,0.5); }
-        .modal-tips { color: #fff; font-size: 16px; font-weight: bold; margin-bottom: 20px; }
-        .modal-close-btn { margin-top: 25px; padding: 10px 40px; border-radius: 20px; border: 1px solid rgba(255,255,255,0.3); background: transparent; color: white; font-size: 16px; font-weight: bold; cursor: pointer; }
+
+        #img-modal-overlay.show {
+            opacity: 1;
+            visibility: visible;
+        }
+
+        #modal-img-result {
+            max-width: 85%;
+            max-height: 70vh;
+            border-radius: 12px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+        }
+
+        .modal-tips {
+            color: #fff;
+            font-size: 16px;
+            font-weight: bold;
+            margin-bottom: 20px;
+        }
+
+        .modal-close-btn {
+            margin-top: 25px;
+            padding: 10px 40px;
+            border-radius: 20px;
+            border: 1px solid rgba(255,255,255,0.3);
+            background: transparent;
+            color: white;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+        }
     </style>
 </head>
 <body>
@@ -286,9 +668,16 @@
 
         <div id="section-qr">
             <label class="label-text" for="text-input">节点链接</label>
-            <textarea id="text-input" class="text-input-qr" placeholder="请输入节点链接，支持多链接合并生成..."></textarea>
-            
-            <div id="qr-error" class="hidden">🔞哒咩!你太长了!我受不了!<br>变短点再来!要不你去隔壁试试?<br>（文本过长或包含非法字符，核对精简后重试，批量内容请使用订阅转换）</div>
+            <div class="text-input-container">
+                <textarea id="text-input" placeholder="请输入节点链接，支持多链接合并生成..."></textarea>
+                <button id="clear-qr" class="clear-btn" title="清空输入">×</button>
+            </div>
+
+            <div id="qr-error" class="hidden">
+                🔞哒咩!你太长了!我受不了!<br>
+                变短点再来!要不你去隔壁试试?<br>
+                （文本过长或包含非法字符，核对精简后重试，批量内容请使用订阅转换）
+            </div>
 
             <div id="qr-poster">
                 <div class="qr-wrapper">
@@ -304,8 +693,11 @@
 
         <div id="section-sub" class="hidden">
             <label class="label-text" for="sub-links">订阅链接</label>
-            <textarea id="sub-links" class="text-input-sub" placeholder="请输入订阅链接，支持多行输入..."></textarea>
-            
+            <div class="text-input-container">
+                <textarea id="sub-links" placeholder="请输入订阅链接，支持多行输入..."></textarea>
+                <button id="clear-sub" class="clear-btn" title="清空输入">×</button>
+            </div>
+
             <div class="grid-row">
                 <div class="grid-col">
                     <label class="label-text" for="sub-target">目标客户端</label>
@@ -319,7 +711,7 @@
                         <option value="loon">Loon</option>
                         <option value="surfboard">Surfboard</option>
                         <option value="quanx">Quantumult X</option>
-						<option value="mixed">通用订阅 (自动识别)</option>
+                        <option value="mixed">通用订阅 (自动识别)</option>
                     </select>
                 </div>
                 <div class="grid-col">
@@ -350,7 +742,7 @@
                             <option value="https://d1.mk/short">d1.mk</option>
                             <option value="https://dlj.tf/short">dlj.tf</option>
                             <option value="https://suo.yt/short">suo.yt</option>
-							<option value="tinyurl">TinyURL (国际代理/极致稳定)</option>
+                            <option value="tinyurl">TinyURL (国际代理/极致稳定)</option>
                             <option value="isgd">is.gd (国际代理/无墙推荐)</option>
                             <option value="none">不使用(仅长链直连)</option>
                             <option value="custom">自定义短链...</option>
@@ -402,7 +794,7 @@
             </div>
 
             <button class="btn primary-btn" id="sub-gen-btn">🚀一键生成</button>
-            
+
             <div id="sub-output-wrapper" style="display:none; margin-top:24px;">
                 <div id="sub-promo" class="promo-text">👇👇👇<br>🌎ZooDirector_<br>👍专注跨境出海网络</div>
                 <div id="sub-result">
@@ -416,340 +808,593 @@
 
     <script>
     document.addEventListener('DOMContentLoaded', () => {
-        // --- 1. 初始化与暗黑模式记忆 ---
-        const el = id => document.getElementById(id);
-        const UI_CONFIG = { originalTipsHTML: `<strong style="color:var(--text-main);">⚡TIPS（注意事项）:</strong><br>本人所提供节点命名格式为<br>（国家-用户名-暂停日期）<br>仅用作备注标识，可自行更改` };
+        // ────────────────────────────────────────────────
+        // DOM 缓存
+        // ────────────────────────────────────────────────
+        const DOM = {
+            themeToggle: document.getElementById('theme-toggle'),
+            toast: document.getElementById('toast'),
+            textInput: document.getElementById('text-input'),
+            qrDiv: document.getElementById('qrcode'),
+            qrPoster: document.getElementById('qr-poster'),
+            embeddedInfo: document.getElementById('embedded-info'),
+            nodeTips: document.getElementById('node-tips'),
+            qrError: document.getElementById('qr-error'),
+            copyPosterBtn: document.getElementById('copy-poster-btn'),
+            clearQrBtn: document.getElementById('clear-qr'),
+            clearSubBtn: document.getElementById('clear-sub'),
+            imgModal: document.getElementById('img-modal-overlay'),
+            modalImg: document.getElementById('modal-img-result'),
+            subLinks: document.getElementById('sub-links'),
+            subTarget: document.getElementById('sub-target'),
+            subFilename: document.getElementById('sub-filename'),
+            subBackend: document.getElementById('sub-backend'),
+            customBackend: document.getElementById('custom-backend'),
+            subShortener: document.getElementById('sub-shortener'),
+            customShortener: document.getElementById('custom-shortener'),
+            subConfig: document.getElementById('sub-config'),
+            customConfig: document.getElementById('custom-config'),
+            subGenBtn: document.getElementById('sub-gen-btn'),
+            subOutput: document.getElementById('sub-output'),
+            subOutputWrapper: document.getElementById('sub-output-wrapper'),
+            chkEmoji: document.getElementById('chk-emoji'),
+            chkUdp: document.getElementById('chk-udp'),
+            chkScv: document.getElementById('chk-scv'),
+            chkAppendType: document.getElementById('chk-append-type'),
+            chkSort: document.getElementById('chk-sort'),
+            chkExpand: document.getElementById('chk-expand'),
+            tabQr: document.getElementById('tab-qr'),
+            tabSub: document.getElementById('tab-sub'),
+            sectionQr: document.getElementById('sectionQr'),
+            sectionQr: document.getElementById('section-qr'),
+            sectionSub: document.getElementById('section-sub'),
+            advancedToggle: document.querySelector('.advanced-toggle'),
+            advancedContent: document.getElementById('advanced-settings'),
+            modalCloseBtn: document.querySelector('.modal-close-btn'),
+            copySubBtn: document.querySelector('.copy-btn'),
+            btnInlineConfig: document.getElementById('btn-inline-config'),
+            inlineConfigPanel: document.getElementById('inline-config-panel')
+        };
 
-        // 读取本地存储的主题偏好
+        let isGenerating = false;
+        let qrDebounceTimer = null;
+        let toastTimer = null;
+
+        // ────────────────────────────────────────────────
+        // Toast 提示
+        // ────────────────────────────────────────────────
+        function showToast(msg) {
+            if (!DOM.toast) return;
+            DOM.toast.textContent = msg;
+            DOM.toast.classList.add('show');
+            clearTimeout(toastTimer);
+            toastTimer = setTimeout(() => DOM.toast.classList.remove('show'), 3500);
+        }
+
+        // ────────────────────────────────────────────────
+        // 主题切换
+        // ────────────────────────────────────────────────
         const savedTheme = localStorage.getItem('theme');
         if (savedTheme) {
             document.documentElement.setAttribute('data-theme', savedTheme);
-            el('theme-toggle').innerText = savedTheme === 'dark' ? '☀️' : '🌙';
+            DOM.themeToggle.textContent = savedTheme === 'dark' ? '☀️' : '🌙';
         }
-
-        // 读取本地缓存的二维码输入内容（增强融合）
-        const inputEl = el('text-input');
-        if (inputEl) {
-            const cache = localStorage.getItem('qr_cache');
-            if (cache && !inputEl.value) {
-                inputEl.value = cache;
-                // 等待依赖加载完成后自动渲染缓存的二维码
-                setTimeout(generateQR, 800);
-            }
-        }
-
-        // --- 2. 事件绑定区 ---
-        el('theme-toggle')?.addEventListener('click', toggleTheme);
-        el('tab-qr')?.addEventListener('click', () => switchTab('qr'));
-        el('tab-sub')?.addEventListener('click', () => switchTab('sub'));
-        document.querySelector('.advanced-toggle')?.addEventListener('click', toggleAdvanced);
-        el('btn-inline-config')?.addEventListener('click', toggleInlineConfig);
-        el('sub-gen-btn')?.addEventListener('click', generateSub);
-        document.querySelector('.copy-btn')?.addEventListener('click', copySubText);
-        el('copy-poster-btn')?.addEventListener('click', copyPoster);
-        document.querySelector('.modal-close-btn')?.addEventListener('click', closeImgModal);
-        
-        // 监听下拉框变化，控制自定义选项显示
-        ['backend', 'shortener', 'config'].forEach(type => {
-            el(`sub-${type}`)?.addEventListener('change', (e) => {
-                el(`custom-${type}`).classList.toggle('hidden', e.target.value !== 'custom');
-            });
+        DOM.themeToggle.addEventListener('click', () => {
+            const current = document.documentElement.getAttribute('data-theme');
+            const next = current === 'dark' ? 'light' : 'dark';
+            document.documentElement.setAttribute('data-theme', next);
+            DOM.themeToggle.textContent = next === 'dark' ? '☀️' : '🌙';
+            localStorage.setItem('theme', next);
         });
 
-        // 二维码输入防抖 (使用 requestAnimationFrame 优化重绘) 并加入缓存机制
-        let qrTimeout; 
-        let qrAnimationFrame; 
-        el('text-input')?.addEventListener('input', () => { 
-            localStorage.setItem('qr_cache', el('text-input').value); // 输入缓存
-            clearTimeout(qrTimeout); 
-            cancelAnimationFrame(qrAnimationFrame); 
-            qrTimeout = setTimeout(() => { 
-                qrAnimationFrame = requestAnimationFrame(() => generateQR()); 
-            }, 300); 
-        });
-
-        // 窗口尺寸自适应 (增强融合)
-        let resizeTimer;
-        window.addEventListener('resize', () => {
-            clearTimeout(resizeTimer);
-            resizeTimer = setTimeout(() => {
-                if (el('text-input')?.value.trim()) {
-                    generateQR();
-                }
-            }, 300);
-        });
-
-        // --- 3. 核心功能函数 ---
-        let toastTimer;
-        function showToast(message) {
-            const toast = el('toast');
-            toast.innerText = message;
-            toast.classList.add('show');
-            clearTimeout(toastTimer);
-            toastTimer = setTimeout(() => toast.classList.remove('show'), 3500); 
-        }
-
-        function toggleTheme() {
-            const currentTheme = document.documentElement.getAttribute('data-theme');
-            const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
-            document.documentElement.setAttribute('data-theme', newTheme);
-            el('theme-toggle').innerText = newTheme === 'dark' ? '☀️' : '🌙';
-            localStorage.setItem('theme', newTheme);
-        }
-
-        function switchTab(tab) {
-            ['qr', 'sub'].forEach(t => {
-                el(`tab-${t}`).classList.toggle('active', t === tab);
-                el(`section-${t}`).classList.toggle('hidden', t !== tab);
-            });
-        }
-
-        function toggleAdvanced() {
-            const content = el('advanced-settings');
-            content.style.display = content.style.display === 'block' ? 'none' : 'block';
-        }
-
-        function toggleInlineConfig() {
-            const panel = el('inline-config-panel');
-            panel.style.display = (panel.style.display === 'block' ? 'none' : 'block');
-        }
-
+        // ────────────────────────────────────────────────
+        // 节点名称提取
+        // ────────────────────────────────────────────────
         function extractNodeName(text) {
             if (!text) return "";
+
             text = text.trim();
-            if (text.includes("#")) {
-                let parts = text.split("#");
-                let name = decodeURIComponent(parts[parts.length - 1]);
-                let match = name.match(/^([^\s\-]+)-([^\s\-]+)-([^\s\-]*?\d+(?:\.\d+)*)/);
-                return match ? match[0] : ""; 
-            }
-            return "";
-        }
+            if (!text.includes("#")) return "";
 
-        function generateQR() {
-            const rawText = el('text-input').value.trim();
-            if(!rawText) {
-                el('qr-poster').style.display = "none";
-                el('copy-poster-btn').classList.add('hidden');
-                el('qr-error').classList.add('hidden');
-                return;
-            }
-            
-            if (typeof QRCode === 'undefined') {
-                showToast("⏳ 资源正在加载中，请稍后再试...");
-                return;
-            }
-            
-            el('qrcode').innerHTML = "";
             try {
-                let textLen = rawText.length;
-                let ecLevel = QRCode.CorrectLevel.M;
-                if (textLen < 120) ecLevel = QRCode.CorrectLevel.H;
-                else if (textLen < 220) ecLevel = QRCode.CorrectLevel.Q;
-                else if (textLen < 350) ecLevel = QRCode.CorrectLevel.M;
-                else ecLevel = QRCode.CorrectLevel.L;
+                let parts = text.split("#");
+                let name = decodeURIComponent(parts[parts.length - 1]).trim();
 
-                let qrSize = window.innerWidth > 600 ? 380 : 260;
-                new QRCode(el('qrcode'), { text: rawText, width: qrSize, height: qrSize, correctLevel: ecLevel });
-                
-                if (el('qrcode').children.length === 0) throw new Error();
+                let segments = name.split('-').map(s => s.trim());
 
-                el('qr-error').classList.add('hidden');
-                const nodeName = extractNodeName(rawText.split('\n')[0]);
-                if(nodeName !== "") {
-                    el('node-tips').classList.remove('hidden');
-                    el('node-tips').innerHTML = UI_CONFIG.originalTipsHTML;
-                    el('embedded-info').innerText = nodeName;
-                    el('embedded-info').classList.remove('hidden');
-                } else {
-                    el('node-tips').classList.add('hidden');
-                    el('embedded-info').innerText = "Zoo-Net";
-                    el('embedded-info').classList.remove('hidden');
-                }
-                el('qr-poster').style.display = "block";
-                el('copy-poster-btn').classList.remove('hidden');
+                if (segments.length < 3) return "";
+
+                let firstSegment = segments[0];
+                let firstCore = firstSegment.replace(/^[\[\]+*_\s-]+/, '').toLowerCase();
+
+                const countryPrefixes = [
+                    'us', 'usa', 'u.s', 'america',
+                    'ca', 'canada',
+                    'uk', 'gb', 'unitedkingdom',
+                    'de', 'germany',
+                    'fr', 'france',
+                    'jp', 'japan',
+                    'kr', 'korea', 'southkorea',
+                    'sg', 'singapore',
+                    'hk', 'hongkong',
+                    'tw', 'taiwan',
+                    'au', 'australia',
+                    'nz', 'newzealand',
+                    'ru', 'russia',
+                    'in', 'india',
+                    'br', 'brazil',
+                    'za', 'southafrica',
+                    'mx', 'mexico',
+                    'nl', 'netherlands',
+                    'se', 'sweden',
+                    'no', 'norway',
+                    'dk', 'denmark',
+                    'fi', 'finland',
+                    'it', 'italy',
+                    'es', 'spain',
+                    'pt', 'portugal',
+                    'ch', 'switzerland',
+                    'at', 'austria',
+                    'pl', 'poland',
+                    'cz', 'czech',
+                    'ua', 'ukraine',
+                    'tr', 'turkey',
+                    'ae', 'uae',
+                    'il', 'israel',
+                    'ar', 'argentina',
+                    'cl', 'chile',
+                    'ie', 'ireland',
+                    'gr', 'greece',
+                    'my', 'malaysia',
+                    'th', 'thailand',
+                    'vn', 'vietnam',
+                    'id', 'indonesia',
+                    'ph', 'philippines'
+                ];
+
+                let isValidFirst = countryPrefixes.some(prefix => firstCore === prefix || firstCore.startsWith(prefix));
+                if (!isValidFirst) return "";
+
+                let thirdSegment = segments[2];
+                if (!/\d/.test(thirdSegment) || thirdSegment.includes('-')) return "";
+
+                return segments.slice(0, 3).join('-');
             } catch (e) {
-                el('qr-poster').style.display = "none";
-                el('copy-poster-btn').classList.add('hidden');
-                el('qr-error').classList.remove('hidden');
+                return "";
             }
         }
 
-        async function generateSub() {
-            let rawLinks = el('sub-links').value.trim();
-            if(!rawLinks) return showToast("❌ 请输入链接");
-
-            // 统一处理多行链接，用 | 隔开
-            let processedLinks = rawLinks.split('\n').join('|');
-            let defaultName = extractNodeName(rawLinks.split('\n')[0]) || "ZooNet_Sub";
-            let filename = el('sub-filename').value.trim() || defaultName;
-
-            let backend = el('sub-backend').value === 'custom' ? el('custom-backend').value : el('sub-backend').value;
-            let configUrl = el('sub-config').value === 'custom' ? el('custom-config').value : el('sub-config').value;
-            
-            const params = new URLSearchParams({
-                target: el('sub-target').value,
-                url: processedLinks,
-                filename: filename,
-                emoji: el('chk-emoji').checked,
-                udp: el('chk-udp').checked,
-                scv: el('chk-scv').checked,
-                append_type: el('chk-append-type').checked,
-                sort: el('chk-sort').checked,
-                expand: el('chk-expand').checked,
-                new_name: 'true',
-                flag: 'clash meta',
-                dev: 'true'
-            });
-
-            if (configUrl) {
-                params.append('config', configUrl);
-            }
-
-            // 安全拼接 URL 参数 (修复潜在BUG)
-            let url;
-            if (backend.includes('?')) {
-                url = backend.endsWith('?') ? backend + params.toString() : backend + '&' + params.toString();
-            } else {
-                url = backend + '?' + params.toString();
-            }
-            
-            if (url.includes('tuic')) {
-                url = url.replace(/%253A/g, ':').replace(/%3A/g, ':');
-            }
-
-            let shortener = el('sub-shortener').value === 'custom' ? el('custom-shortener').value : el('sub-shortener').value;
-            let finalOutputUrl = url; 
-            const genBtn = el('sub-gen-btn');
-
-            if (shortener !== "none" && shortener) {
-                genBtn.innerText = "⏳ 正在生成短链...";
-                genBtn.style.pointerEvents = "none";
-
-                try {
-                    const controller = new AbortController();
-                    const timeoutId = setTimeout(() => controller.abort(), 5000);
-                    const fetchOptions = { signal: controller.signal };
-
-                    if (shortener === "tinyurl" || shortener === "isgd") {
-                        let apiEndpoint = shortener === "tinyurl" 
-                            ? "https://tinyurl.com/api-create.php?url=" 
-                            : "https://is.gd/create.php?format=simple&url=";
-                        let proxyUrl = "https://api.allorigins.win/get?url=" + encodeURIComponent(apiEndpoint + encodeURIComponent(url));
-                        
-                        let response = await fetch(proxyUrl, fetchOptions);
-                        let json = await response.json();
-                        clearTimeout(timeoutId);
-                        
-                        if (json.contents && json.contents.trim().startsWith("http")) {
-                            finalOutputUrl = json.contents.trim();
-                            showToast(`✔️ ${shortener === "tinyurl" ? "TinyURL" : "is.gd"} 代理生成成功!`);
-                        } else throw new Error("接口被墙或代理返回异常");
-                    } 
-                    else if (shortener.includes("url=")) {
-                        let response = await fetch(shortener + encodeURIComponent(url), fetchOptions);
-                        let text = await response.text();
-                        clearTimeout(timeoutId);
-                        finalOutputUrl = text.trim().startsWith("http") ? text.trim() : url;
-                        if (finalOutputUrl !== url) showToast("✔️ GET短链生成成功!");
-                    } 
-                    else {
-                        let formData = new FormData();
-                        formData.append("longUrl", btoa(unescape(encodeURIComponent(url))));
-                        fetchOptions.method = 'POST';
-                        fetchOptions.body = formData;
-
-                        let response = await fetch(shortener, fetchOptions);
-                        let json = await response.json();
-                        clearTimeout(timeoutId);
-                        
-                        if (json.Code === 1 && json.ShortUrl) {
-                            finalOutputUrl = json.ShortUrl;
-                            showToast("✔️ 短链生成成功!");
-                        } else throw new Error(json.Message || "可能遭遇拦截");
-                    }
-                } catch (error) {
-                    console.error("短链服务报错: ", error);
-                    let errMsg = error.name === 'AbortError' ? "请求超时" : error.message.substring(0,8);
-                    showToast(`⚠️ 短链受阻(${errMsg}...)，已回退长链`);
-                    finalOutputUrl = url;
-                } finally {
-                    genBtn.innerText = "🚀一键生成"; 
-                    genBtn.style.pointerEvents = "auto";
-                }
-            } else {
-                showToast("✔️ 订阅生成成功!");
-            }
-
-            el('sub-output').value = finalOutputUrl;
-            
-            const targetEl = el('sub-output-wrapper');
-            targetEl.style.display = "block";
-            targetEl.classList.remove('flash-update');
-            void targetEl.offsetWidth; 
-            targetEl.classList.add('flash-update');
-        }
-
-        function copySubText() {
-            el('sub-output').select();
-            document.execCommand('copy');
-            showToast("✨ 订阅地址已复制");
-        }
-
-        function closeImgModal() {
-            el('img-modal-overlay').classList.remove('show');
-        }
-
-        function copyPoster() {
-            if (typeof html2canvas === 'undefined') {
-                showToast("⏳ 渲染引擎正在加载中，请稍候...");
+        // ────────────────────────────────────────────────
+        // QR 生成与清除逻辑 (修复版)
+        // ────────────────────────────────────────────────
+        function generateQR() {
+            const rawText = DOM.textInput.value.trim();
+            if (!rawText) {
+                DOM.qrPoster.style.display = "none";
+                DOM.copyPosterBtn.classList.add('hidden');
+                DOM.qrError.classList.add('hidden');
                 return;
             }
-            
-            const btn = el('copy-poster-btn');
-            const poster = el('qr-poster');
-            btn.innerText = "⏳ 正在渲染海报...";
-            
-            html2canvas(poster, { 
-                scale: window.devicePixelRatio > 1 ? 2 : 3, 
-                useCORS: true, 
-                backgroundColor: document.documentElement.getAttribute('data-theme') === 'dark' ? '#1c1c1e' : '#ffffff' 
-            }).then(canvas => {
-                const isWechat = /MicroMessenger/i.test(navigator.userAgent);
-                
-                if (isWechat || !navigator.clipboard || !window.ClipboardItem) {
-                    el('modal-img-result').src = canvas.toDataURL("image/png");
-                    el('img-modal-overlay').classList.add('show');
-                    btn.innerText = "📸 复制图片到剪贴板";
-                    return;
+
+            if (typeof QRCode === 'undefined' || !window.libsReady) return;
+
+            if (rawText.length > 2000) {
+                DOM.qrError.classList.remove('hidden');
+                DOM.qrPoster.style.display = "none";
+                DOM.copyPosterBtn.classList.add('hidden');
+                return;
+            }
+
+            DOM.qrDiv.innerHTML = "";
+            DOM.qrError.classList.add('hidden');
+
+            try {
+                let ecLevel = QRCode.CorrectLevel.M;
+                const len = rawText.length;
+                if (len < 120) ecLevel = QRCode.CorrectLevel.H;
+                else if (len < 220) ecLevel = QRCode.CorrectLevel.Q;
+                else if (len < 350) ecLevel = QRCode.CorrectLevel.M;
+
+                const size = window.innerWidth > 600 ? 380 : 260;
+
+                new QRCode(DOM.qrDiv, {
+                    text: rawText,
+                    width: size,
+                    height: size,
+                    correctLevel: ecLevel
+                });
+
+                if (DOM.qrDiv.children.length === 0) throw new Error("生成失败");
+
+                const nodeName = extractNodeName(rawText.split('\n')[0] || "");
+                if (nodeName) {
+                    DOM.nodeTips.classList.remove('hidden');
+                    DOM.nodeTips.innerHTML = `<strong style="color:var(--text-main);">⚡TIPS（注意事项）:</strong><br>本人所提供节点命名格式为<br>（国家-用户名-暂停日期）<br>仅用作备注标识，可自行更改`;
+                    DOM.embeddedInfo.textContent = nodeName;
+                    DOM.embeddedInfo.classList.remove('hidden');
+                } else {
+                    DOM.nodeTips.classList.add('hidden');
+                    DOM.embeddedInfo.textContent = "ZooNet";
+                    DOM.embeddedInfo.classList.remove('hidden');
                 }
 
-                canvas.toBlob(blob => {
-                    try {
-                        const item = new ClipboardItem({ "image/png": blob });
-                        navigator.clipboard.write([item]).then(() => {
-                            poster.classList.remove('flash-update');
-                            void poster.offsetWidth; 
-                            poster.classList.add('flash-update');
-                            poster.classList.add('success-flash-blink');
-                            showToast("✨ 图片已成功复制");
-                            btn.innerText = "📸 复制图片到剪贴板";
-                        }).catch(err => {
-                            el('modal-img-result').src = canvas.toDataURL("image/png");
-                            el('img-modal-overlay').classList.add('show');
-                            btn.innerText = "📸 复制图片到剪贴板";
-                        });
-                    } catch (e) {
-                        el('modal-img-result').src = canvas.toDataURL("image/png");
-                        el('img-modal-overlay').classList.add('show');
-                        btn.innerText = "📸 复制图片到剪贴板";
-                    }
+                DOM.qrPoster.style.display = "block";
+                DOM.copyPosterBtn.classList.remove('hidden');
+            } catch (e) {
+                DOM.qrPoster.style.display = "none";
+                DOM.copyPosterBtn.classList.add('hidden');
+                DOM.qrError.classList.remove('hidden');
+            }
+        }
+
+        // 核心修复1：使用 CSS class 来配合伪类，移除暴力覆盖的内联 display 属性
+        function updateClearQrBtn() {
+            const container = DOM.textInput.closest('.text-input-container');
+            if (DOM.textInput.value.length > 0) {
+                container.classList.add('has-content');
+            } else {
+                container.classList.remove('has-content');
+            }
+            DOM.clearQrBtn.style.display = ''; // 移交控制权给 CSS
+        }
+
+        DOM.textInput.addEventListener('input', () => {
+            updateClearQrBtn();
+            localStorage.setItem('qr_cache', DOM.textInput.value);
+            clearTimeout(qrDebounceTimer);
+            qrDebounceTimer = setTimeout(generateQR, 280);
+        });
+
+        // 核心修复2：点击清除后，强制拉回焦点继续输入
+        DOM.clearQrBtn.addEventListener('click', () => {
+            DOM.textInput.value = '';
+            updateClearQrBtn();
+            localStorage.removeItem('qr_cache');
+            generateQR();
+            DOM.textInput.focus(); // 保持选中状态
+        });
+
+        // ────────────────────────────────────────────────
+        // 订阅输入框清除逻辑 (修复版)
+        // ────────────────────────────────────────────────
+        function updateClearSubBtn() {
+            const container = DOM.subLinks.closest('.text-input-container');
+            if (DOM.subLinks.value.length > 0) {
+                container.classList.add('has-content');
+            } else {
+                container.classList.remove('has-content');
+            }
+            DOM.clearSubBtn.style.display = ''; // 移交控制权给 CSS
+        }
+
+        DOM.subLinks.addEventListener('input', () => {
+            updateClearSubBtn();
+        });
+
+        DOM.clearSubBtn.addEventListener('click', () => {
+            DOM.subLinks.value = '';
+            updateClearSubBtn();
+            DOM.subLinks.focus(); // 保持选中状态
+        });
+
+        // 初始化按钮状态
+        updateClearSubBtn();
+
+        // ────────────────────────────────────────────────
+        // 订阅配置持久化
+        // ────────────────────────────────────────────────
+        function saveSubConfig() {
+            const config = {
+                target: DOM.subTarget?.value,
+                backend: DOM.subBackend?.value,
+                shortener: DOM.subShortener?.value,
+                filename: DOM.subFilename?.value,
+                emoji: DOM.chkEmoji?.checked,
+                udp: DOM.chkUdp?.checked,
+                scv: DOM.chkScv?.checked,
+                append_type: DOM.chkAppendType?.checked,
+                sort: DOM.chkSort?.checked,
+                expand: DOM.chkExpand?.checked
+            };
+            localStorage.setItem('zoo_sub_config', JSON.stringify(config));
+        }
+
+        function loadSubConfig() {
+            try {
+                const saved = localStorage.getItem('zoo_sub_config');
+                if (saved) {
+                    const c = JSON.parse(saved);
+                    if (c.target && DOM.subTarget) DOM.subTarget.value = c.target;
+                    if (c.backend && DOM.subBackend) DOM.subBackend.value = c.backend;
+                    if (c.shortener && DOM.subShortener) DOM.subShortener.value = c.shortener;
+                    if (c.filename && DOM.subFilename) DOM.subFilename.value = c.filename;
+                    if ('emoji' in c && DOM.chkEmoji) DOM.chkEmoji.checked = !!c.emoji;
+                    if ('udp' in c && DOM.chkUdp) DOM.chkUdp.checked = !!c.udp;
+                    if ('scv' in c && DOM.chkScv) DOM.chkScv.checked = !!c.scv;
+                    if ('append_type' in c && DOM.chkAppendType) DOM.chkAppendType.checked = !!c.append_type;
+                    if ('sort' in c && DOM.chkSort) DOM.chkSort.checked = !!c.sort;
+                    if ('expand' in c && DOM.chkExpand) DOM.chkExpand.checked = !!c.expand;
+                }
+            } catch (e) {
+                console.warn("订阅配置加载失败", e);
+            }
+        }
+
+        loadSubConfig();
+
+        const subControls = [
+            DOM.subTarget, DOM.subBackend, DOM.subShortener, DOM.subFilename,
+            DOM.chkEmoji, DOM.chkUdp, DOM.chkScv, DOM.chkAppendType,
+            DOM.chkSort, DOM.chkExpand
+        ].filter(Boolean);
+
+        subControls.forEach(el => el.addEventListener('change', saveSubConfig));
+
+        // ────────────────────────────────────────────────
+        // 复制订阅地址
+        // ────────────────────────────────────────────────
+        async function copySubText() {
+            if (!DOM.subOutput.value) return;
+            try {
+                await navigator.clipboard.writeText(DOM.subOutput.value);
+                showToast("✨ 订阅地址已复制");
+            } catch {
+                DOM.subOutput.select();
+                document.execCommand('copy');
+                showToast("✨ 订阅地址已复制（旧方式）");
+            }
+        }
+
+        // ────────────────────────────────────────────────
+        // 一键生成订阅
+        // ────────────────────────────────────────────────
+        async function generateSub() {
+            if (isGenerating) return;
+            isGenerating = true;
+            const btn = DOM.subGenBtn;
+            const orig = btn.innerText;
+            btn.innerText = "⏳ 生成中...";
+            btn.disabled = true;
+
+            try {
+                const raw = DOM.subLinks.value.trim();
+                if (!raw) throw new Error("请输入订阅链接");
+
+                const links = raw.split('\n').join('|');
+                const filename = DOM.subFilename.value.trim() || (extractNodeName(raw.split('\n')[0]) || "ZooNet_Sub");
+
+                let backend = DOM.subBackend.value === 'custom' ? DOM.customBackend.value : DOM.subBackend.value;
+                let config = DOM.subConfig.value === 'custom' ? DOM.customConfig.value : DOM.subConfig.value;
+
+                const params = new URLSearchParams({
+                    url: links,
+                    filename,
+                    emoji: DOM.chkEmoji?.checked ?? true,
+                    udp: DOM.chkUdp?.checked ?? true,
+                    scv: DOM.chkScv?.checked ?? true,
+                    append_type: DOM.chkAppendType?.checked ?? false,
+                    sort: DOM.chkSort?.checked ?? false,
+                    expand: DOM.chkExpand?.checked ?? true,
+                    new_name: 'true',
+                    flag: 'clash meta',
+                    dev: 'true'
                 });
-            }).catch(err => {
-                showToast("❌ 渲染失败");
+
+                if (DOM.subTarget.value !== 'mixed') {
+                    params.set('target', DOM.subTarget.value);
+                }
+
+                if (config) params.append('config', config);
+
+                let url = backend;
+                if (backend.includes('?')) {
+                    url += backend.endsWith('?') ? '' : '&';
+                } else {
+                    url += '?';
+                }
+                url += params.toString();
+
+                if (url.includes('tuic')) {
+                    url = url.replace(/%253A/g, ':').replace(/%3A/g, ':');
+                }
+
+                let finalUrl = url;
+                const shortener = DOM.subShortener.value === 'custom' ? DOM.customShortener.value : DOM.subShortener.value;
+
+                if (shortener !== "none" && shortener) {
+                    btn.innerText = "⏳ 正在生成短链...";
+
+                    try {
+                        const controller = new AbortController();
+                        const timeoutId = setTimeout(() => controller.abort(), 8000);
+
+                        if (shortener === "tinyurl" || shortener === "isgd") {
+                            let apiEndpoint = shortener === "tinyurl" 
+                                ? "https://tinyurl.com/api-create.php?url=" 
+                                : "https://is.gd/create.php?format=simple&url=";
+                            let proxyUrl = "https://api.allorigins.win/get?url=" + encodeURIComponent(apiEndpoint + encodeURIComponent(url));
+                            
+                            let response = await fetch(proxyUrl, { signal: controller.signal });
+                            let json = await response.json();
+                            clearTimeout(timeoutId);
+                            
+                            if (json.contents && json.contents.trim().startsWith("http")) {
+                                finalUrl = json.contents.trim();
+                                showToast(`✔️ ${shortener === "tinyurl" ? "TinyURL" : "is.gd"} 代理生成成功!`);
+                            } else {
+                                throw new Error("接口被墙或代理返回异常");
+                            }
+                        } 
+                        else if (shortener.includes("url=")) {
+                            let response = await fetch(shortener + encodeURIComponent(url), { signal: controller.signal });
+                            let text = await response.text();
+                            clearTimeout(timeoutId);
+                            finalUrl = text.trim().startsWith("http") ? text.trim() : url;
+                            if (finalUrl !== url) showToast("✔️ GET短链生成成功!");
+                        } 
+                        else {
+                            let formData = new FormData();
+                            formData.append("longUrl", btoa(unescape(encodeURIComponent(url))));
+
+                            let response = await fetch(shortener, {
+                                method: 'POST',
+                                body: formData,
+                                signal: controller.signal
+                            });
+                            let json = await response.json();
+                            clearTimeout(timeoutId);
+                            
+                            if (json.Code === 1 && json.ShortUrl) {
+                                finalUrl = json.ShortUrl;
+                                showToast("✔️ 短链生成成功!");
+                            } else {
+                                throw new Error(json.Message || "可能遭遇拦截");
+                            }
+                        }
+                    } catch (error) {
+                        console.error("短链服务报错: ", error);
+                        let errMsg = error.name === 'AbortError' ? "请求超时" : (error.message || "").substring(0,8);
+                        showToast(`⚠️ 短链受阻(${errMsg}...)，已回退长链`);
+                        finalUrl = url;
+                    }
+                } else {
+                    showToast("✔️ 订阅生成成功!");
+                }
+
+                DOM.subOutput.value = finalUrl;
+                DOM.subOutputWrapper.style.display = "block";
+                DOM.subOutputWrapper.classList.add('flash-update');
+            } catch (e) {
+                showToast("❌ " + (e.message || "生成失败，请检查输入"));
+            } finally {
+                isGenerating = false;
+                btn.innerText = orig;
+                btn.disabled = false;
+            }
+        }
+
+        // ────────────────────────────────────────────────
+        // 海报复制
+        // ────────────────────────────────────────────────
+        async function copyPoster() {
+            if (!window.libsReady || typeof html2canvas === 'undefined') {
+                showToast("⏳ 渲染引擎加载中...");
+                return;
+            }
+
+            const btn = DOM.copyPosterBtn;
+            const poster = DOM.qrPoster;
+            btn.innerText = "⏳ 正在渲染海报...";
+
+            try {
+                const canvas = await html2canvas(poster, {
+                    scale: 2,
+                    useCORS: true,
+                    backgroundColor: document.documentElement.getAttribute('data-theme') === 'dark' ? '#1c1c1e' : '#ffffff'
+                });
+
+                const isWechat = /MicroMessenger/i.test(navigator.userAgent);
+                const hasClipboard = navigator.clipboard && window.ClipboardItem;
+
+                if (isWechat || !hasClipboard) {
+                    DOM.modalImg.src = canvas.toDataURL("image/png");
+                    DOM.imgModal.classList.add('show');
+                } else {
+                    const blob = await new Promise(r => canvas.toBlob(r, 'image/png'));
+                    try {
+                        await navigator.clipboard.write([new ClipboardItem({ 'image/png': blob })]);
+                        showToast("✨ 图片已复制到剪贴板");
+                        poster.classList.add('success-flash-blink');
+                    } catch (clipErr) {
+                        console.warn("剪贴板写入失败 → 降级弹窗", clipErr);
+                        DOM.modalImg.src = canvas.toDataURL("image/png");
+                        DOM.imgModal.classList.add('show');
+                        showToast("已生成图片，请长按保存");
+                    }
+                }
+            } catch (err) {
+                console.error("渲染失败", err);
+                showToast("❌ 图片生成失败");
+            } finally {
                 btn.innerText = "📸 复制图片到剪贴板";
+            }
+        }
+
+        // ────────────────────────────────────────────────
+        // 所有事件绑定
+        // ────────────────────────────────────────────────
+        if (DOM.copySubBtn) {
+            DOM.copySubBtn.addEventListener('click', copySubText);
+        }
+
+        if (DOM.tabQr && DOM.tabSub) {
+            DOM.tabQr.addEventListener('click', () => {
+                DOM.tabQr.classList.add('active');
+                DOM.tabSub.classList.remove('active');
+                DOM.sectionQr.classList.remove('hidden');
+                DOM.sectionSub.classList.add('hidden');
+            });
+
+            DOM.tabSub.addEventListener('click', () => {
+                DOM.tabSub.classList.add('active');
+                DOM.tabQr.classList.remove('active');
+                DOM.sectionSub.classList.remove('hidden');
+                DOM.sectionQr.classList.add('hidden');
             });
         }
+
+        if (DOM.advancedToggle && DOM.advancedContent) {
+            DOM.advancedToggle.addEventListener('click', () => {
+                const isVisible = DOM.advancedContent.style.display === 'block';
+                DOM.advancedContent.style.display = isVisible ? 'none' : 'block';
+                DOM.advancedToggle.textContent = isVisible 
+                    ? '⚙️ 高级设置 (新手保持默认) 🔽' 
+                    : '⚙️ 高级设置 (新手保持默认) 🔼';
+            });
+        }
+
+        if (DOM.modalCloseBtn) {
+            DOM.modalCloseBtn.addEventListener('click', () => {
+                DOM.imgModal.classList.remove('show');
+            });
+        }
+
+        if (DOM.btnInlineConfig && DOM.inlineConfigPanel) {
+            DOM.btnInlineConfig.addEventListener('click', () => {
+                const isVisible = DOM.inlineConfigPanel.style.display === 'block';
+                DOM.inlineConfigPanel.style.display = isVisible ? 'none' : 'block';
+            });
+        }
+
+        ['backend', 'shortener', 'config'].forEach(type => {
+            const selectEl = DOM['sub' + type.charAt(0).toUpperCase() + type.slice(1)];
+            const customEl = DOM['custom' + type.charAt(0).toUpperCase() + type.slice(1)];
+            if (selectEl && customEl) {
+                selectEl.addEventListener('change', (e) => {
+                    customEl.classList.toggle('hidden', e.target.value !== 'custom');
+                });
+                customEl.classList.toggle('hidden', selectEl.value !== 'custom');
+            }
+        });
+
+        if (DOM.subGenBtn) DOM.subGenBtn.addEventListener('click', generateSub);
+        if (DOM.copyPosterBtn) DOM.copyPosterBtn.addEventListener('click', copyPoster);
+
+        // ────────────────────────────────────────────────
+        // 初始化
+        // ────────────────────────────────────────────────
+        window.libsReadyPromise = libsPromise;
+
+        libsPromise.then(() => {
+            const cache = localStorage.getItem('qr_cache');
+            if (cache) {
+                DOM.textInput.value = cache;
+                updateClearQrBtn();
+                generateQR();
+            }
+        });
+
+        console.log("%cZoo-Net Tools – 已完成所有修复，可直接发布", "color:#34c759;font-weight:bold;font-size:14px");
     });
     </script>
 </body>
